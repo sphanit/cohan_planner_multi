@@ -25,3 +25,8 @@ The extension of the [CoHAN Planner](https://github.com/sphanit/CoHAN_Planner) t
 	catkin build
 	```
 	Note: catkin build might make the cpu busy utilizing all threads if not configured properly, you can instead use it with less jobs. For example, ```catkin build -j4```, can run up to four jobs at a time.
+
+# Usage
+1. It gets a bit tricky with the namespaces and remapping. CoHAN Navigation provides some examples and configuration files to launch and run it in STAGE and MORSE simulators.
+
+2. As in the CoHAN Planner, we need to publish the known agents (or humans) on ```/tracked_agents``` topic following message structures in [cohan_msgs](https://github.com/sphanit/cohan_planner_multi/tree/master/cohan_msgs/msg).     

@@ -13,7 +13,7 @@ from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import TransformStamped
 
 class AgentFilter(object):
-    def __init__(self, ns):
+    def __init__(self, ns, sim):
         rospy.init_node('agent_filter')
         self.ns_ = ns
         self.rate = rospy.Rate(50.0)
@@ -23,7 +23,11 @@ class AgentFilter(object):
         self.laser_transform = TransformStamped()
         self.got_scan = False
 
-        base = "/base_scan"
+        if sim=="stage":
+            base = "/base_scan"
+        elif sim=="morse":
+            base = "/scan"
+
         if(self.ns_ is not ""):
             base = "/"+self.ns_+base
 
@@ -117,8 +121,9 @@ class AgentFilter(object):
 
 
 if __name__ == '__main__':
-    if(len(sys.argv)<4):
+    sim = sys.argv[1]
+    if(len(sys.argv)<5):
         ns = ""
     else:
-        ns = sys.argv[1]
-    hfilter = AgentFilter(ns = ns)
+        ns = sys.argv[2]
+    hfilter = AgentFilter(ns = ns, sim=sim)

@@ -584,8 +584,14 @@ bool AgentPathPrediction::predictAgentsExternal(
     try {
       tf_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time::now(),
                           robot_to_map_tf);
-      tf_.lookupTransform(map_frame_id_, tracked_agents.header.frame_id,
+
+      std::string agents_frame = "map";
+      if(tracked_agents.header.frame_id!=""){
+        agents_frame = tracked_agents.header.frame_id;
+      }
+      tf_.lookupTransform(map_frame_id_, agents_frame,
                           ros::Time::now(), agent_to_map_tf);
+
       transforms_found = true;
     } catch (tf::LookupException &ex) {
       ROS_ERROR_NAMED(NODE_NAME, "No Transform available Error: %s\n",
@@ -741,8 +747,13 @@ bool AgentPathPrediction::predictAgentsBehind(
   try {
     tf_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time::now(),
                         robot_to_map_tf);
-    tf_.lookupTransform(map_frame_id_, tracked_agents.header.frame_id,
+    std::string agents_frame = "map";
+    if(tracked_agents.header.frame_id!=""){
+      agents_frame = tracked_agents.header.frame_id;
+    }
+    tf_.lookupTransform(map_frame_id_, agents_frame,
                         ros::Time::now(), agent_to_map_tf);
+
     transforms_found = true;
   } catch (tf::LookupException &ex) {
     ROS_ERROR_NAMED(NODE_NAME, "No Transform available Error: %s\n",
@@ -897,8 +908,13 @@ bool AgentPathPrediction::predictAgentsGoal(
   try {
     tf_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time::now(),
                         robot_to_map_tf);
-    tf_.lookupTransform(map_frame_id_, tracked_agents.header.frame_id,
+    std::string agents_frame = "map";
+    if(tracked_agents.header.frame_id!=""){
+      agents_frame = tracked_agents.header.frame_id;
+    }
+    tf_.lookupTransform(map_frame_id_, agents_frame,
                         ros::Time::now(), agent_to_map_tf);
+
     transforms_found = true;
   } catch (tf::LookupException &ex) {
     ROS_ERROR_NAMED(NODE_NAME, "No Transform available Error: %s\n",

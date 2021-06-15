@@ -84,62 +84,68 @@ void AgentVisibilityLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int m
     double theta = tf2::getYaw(agent.pose.orientation);
     Eigen::Vector2d orient_vec(std::cos(theta),std::sin(theta));
 
-    unsigned int width = std::max(1, static_cast<int>((2*radius_) / res)),
-                 height = std::max(1, static_cast<int>((2*radius_) / res));
+    if((int)agents_.agents[i].type == 1){
+      if(!states_.states.empty()){
+        if((int)states_.states[i] > 1)
+          continue;
+      }
+      unsigned int width = std::max(1, static_cast<int>((2*radius_) / res)),
+                   height = std::max(1, static_cast<int>((2*radius_) / res));
 
-    double cx = agent.pose.position.x, cy = agent.pose.position.y;
-    double ox = cx - radius_, oy = cy - radius_;
+      double cx = agent.pose.position.x, cy = agent.pose.position.y;
+      double ox = cx - radius_, oy = cy - radius_;
 
-    int mx, my;
-    costmap->worldToMapNoBounds(ox, oy, mx, my);
+      int mx, my;
+      costmap->worldToMapNoBounds(ox, oy, mx, my);
 
-    int start_x = 0, start_y = 0, end_x = width, end_y = height;
-    if (mx < 0)
-      start_x = -mx;
-    else if (mx + width > costmap->getSizeInCellsX())
-      end_x = std::max(0, static_cast<int>(costmap->getSizeInCellsX()) - mx);
+      int start_x = 0, start_y = 0, end_x = width, end_y = height;
+      if (mx < 0)
+        start_x = -mx;
+      else if (mx + width > costmap->getSizeInCellsX())
+        end_x = std::max(0, static_cast<int>(costmap->getSizeInCellsX()) - mx);
 
-    if (static_cast<int>(start_x + mx) < min_i)
-      start_x = min_i - mx;
-    if (static_cast<int>(end_x + mx) > max_i)
-      end_x = max_i - mx;
+      if (static_cast<int>(start_x + mx) < min_i)
+        start_x = min_i - mx;
+      if (static_cast<int>(end_x + mx) > max_i)
+        end_x = max_i - mx;
 
-    if (my < 0)
-      start_y = -my;
-    else if (my + height > costmap->getSizeInCellsY())
-      end_y = std::max(0, static_cast<int>(costmap->getSizeInCellsY()) - my);
+      if (my < 0)
+        start_y = -my;
+      else if (my + height > costmap->getSizeInCellsY())
+        end_y = std::max(0, static_cast<int>(costmap->getSizeInCellsY()) - my);
 
-    if (static_cast<int>(start_y + my) < min_j)
-      start_y = min_j - my;
-    if (static_cast<int>(end_y + my) > max_j)
-      end_y = max_j - my;
+      if (static_cast<int>(start_y + my) < min_j)
+        start_y = min_j - my;
+      if (static_cast<int>(end_y + my) > max_j)
+        end_y = max_j - my;
 
-    double bx = ox + res / 2,
-           by = oy + res / 2;
+      double bx = ox + res / 2,
+             by = oy + res / 2;
 
-    double var = radius_;
+      double var = radius_;
 
-    for (int i = start_x; i < end_x; i++)
-    {
-      for (int j = start_y; j < end_y; j++)
+      for (int i = start_x; i < end_x; i++)
       {
-        unsigned char old_cost = costmap->getCost(i + mx, j + my);
-        if (old_cost == costmap_2d::NO_INFORMATION)
-          continue;
+        for (int j = start_y; j < end_y; j++)
+        {
+          unsigned char old_cost = costmap->getCost(i + mx, j + my);
+          if (old_cost == costmap_2d::NO_INFORMATION)
+            continue;
 
-        double x = bx + i * res, y = by + j * res;
-        double val;
+          double x = bx + i * res, y = by + j * res;
+          double val;
 
-        val = Gaussian2D(x, y, cx, cy, amplitude_, var, var);
+          val = Gaussian2D(x, y, cx, cy, amplitude_, var, var);
 
-        double rad = sqrt(-2*var*log(val/amplitude_));
-        Eigen::Vector2d pt_vec(x-cx,y-cy);
+          double rad = sqrt(-2*var*log(val/amplitude_));
+          Eigen::Vector2d pt_vec(x-cx,y-cy);
 
-        if (rad > radius_)
-          continue;
-        unsigned char cvalue = (unsigned char) val;//std::min(5*val,254.0);
-        if(orient_vec.dot(pt_vec) <= 0)
-          costmap->setCost(i + mx, j + my, std::max(cvalue, old_cost));
+          if (rad > radius_)
+            continue;
+          unsigned char cvalue = (unsigned char) val;//std::min(5*val,254.0);
+          if(orient_vec.dot(pt_vec) <= 0)
+            costmap->setCost(i + mx, j + my, std::max(cvalue, old_cost));
+        }
       }
     }
   }

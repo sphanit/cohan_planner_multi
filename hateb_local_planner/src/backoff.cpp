@@ -40,6 +40,7 @@
  #define ROBOT_FRAME_ID "base_footprint"
  #define CURRENT_GOAL_TOPIC_NAME "/move_base/current_goal"
  #define PUBLISH_GOAL_TOPIC "/move_base_simple/goal"
+ // #define GET_PLAN_SRV_NAME "/move_base/GlobalPlanner/make_plan"
 
 
  namespace hateb_local_planner {
@@ -186,41 +187,41 @@
      //   get_plan_srv.request.goal.pose.position.y = temp_pose.translation.y;
      //   get_plan_srv.request.goal.pose.position.z = temp_pose.translation.z;
      //   get_plan_srv.request.goal.pose.orientation = temp_pose.rotation;
-       // try{
-       //   get_plan_client_.call(get_plan_srv);
-       //
-       //   if (get_plan_srv.response.plan.poses.size() > 0) {
-       //    // ROS_INFO("feasible !!");
-       //    goal_pub_.publish(get_plan_srv.request.goal);
-       //    return true;
-       //   }
-       //   get_plan_srv.request.goal.pose.position.x = left_pose.translation.x;
-       //   get_plan_srv.request.goal.pose.position.y = left_pose.translation.y;
-       //   get_plan_srv.request.goal.pose.position.z = left_pose.translation.z;
-       //   get_plan_srv.request.goal.pose.orientation = left_pose.rotation;
-       // }
-       // catch (ros::Exception &e){
-       //   // ROS_ERROR("Error occured: %s ", e.what());
-       //   ROS_DEBUG("Right not feasible");
-       // }
-       //
-       // try {
-       //   get_plan_client_.call(get_plan_srv);
-       //
-       //   if (get_plan_srv.response.plan.poses.size() > 0) {
-       //    // ROS_INFO("feasible !!");
-       //    goal_pub_.publish(get_plan_srv.request.goal);
-       //    return true;
-       //   }
-       //   get_plan_srv.request.goal.pose.position.x = behind_pose.translation.x;
-       //   get_plan_srv.request.goal.pose.position.y = behind_pose.translation.y;
-       //   get_plan_srv.request.goal.pose.position.z = behind_pose.translation.z;
-       //   get_plan_srv.request.goal.pose.orientation = behind_pose.rotation;
-       // }
-       // catch (ros::Exception &e){
-       //   ROS_DEBUG("left not feasible");
-       // }
-
+     //   try{
+     //     get_plan_client_.call(get_plan_srv);
+     //
+     //     if (get_plan_srv.response.plan.poses.size() > 0) {
+     //      // ROS_INFO("feasible !!");
+     //      goal_pub_.publish(get_plan_srv.request.goal);
+     //      return true;
+     //     }
+     //     get_plan_srv.request.goal.pose.position.x = left_pose.translation.x;
+     //     get_plan_srv.request.goal.pose.position.y = left_pose.translation.y;
+     //     get_plan_srv.request.goal.pose.position.z = left_pose.translation.z;
+     //     get_plan_srv.request.goal.pose.orientation = left_pose.rotation;
+     //   }
+     //   catch (ros::Exception &e){
+     //     // ROS_ERROR("Error occured: %s ", e.what());
+     //     ROS_DEBUG("Right not feasible");
+     //   }
+     //
+     //   try {
+     //     get_plan_client_.call(get_plan_srv);
+     //
+     //     if (get_plan_srv.response.plan.poses.size() > 0) {
+     //      // ROS_INFO("feasible !!");
+     //      goal_pub_.publish(get_plan_srv.request.goal);
+     //      return true;
+     //     }
+     //     get_plan_srv.request.goal.pose.position.x = behind_pose.translation.x;
+     //     get_plan_srv.request.goal.pose.position.y = behind_pose.translation.y;
+     //     get_plan_srv.request.goal.pose.position.z = behind_pose.translation.z;
+     //     get_plan_srv.request.goal.pose.orientation = behind_pose.rotation;
+     //   }
+     //   catch (ros::Exception &e){
+     //     ROS_DEBUG("left not feasible");
+     //   }
+     //
      //   if (get_plan_client_.call(get_plan_srv)) {
      //     if (get_plan_srv.response.plan.poses.size() > 0) {
      //      // ROS_INFO("Going Back !!");

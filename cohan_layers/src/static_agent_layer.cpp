@@ -52,6 +52,8 @@ void StaticAgentLayer::onInitialize()
 {
   AgentLayer::onInitialize();
   ros::NodeHandle nh("~/" + name_), g_nh;
+  nh.getParam("robot_radius", robot_radius);
+  nh.getParam("agent_radius", agent_radius);
   server_ = new dynamic_reconfigure::Server<AgentLayerConfig>(nh);
   f_ = boost::bind(&StaticAgentLayer::configure, this, _1, _2);
   server_->setCallback(f_);
@@ -83,58 +85,139 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
   for(uint i=0;i<transformed_agents_.size();i++){
     auto agent = transformed_agents_[i];
 
-    unsigned int width = std::max(1, static_cast<int>((2*radius_) / res)),
-                 height = std::max(1, static_cast<int>((2*radius_) / res));
+    bool check_one=false;
+    if(!states_.states.empty()){
+      if(((int)states_.states[i] < 2) && ((int)agents_.agents[i].type == 1)){
+        check_one = true;
+      }
+      else{
+        check_one = false;
+      }
+    }
+    else{
+      check_one = agents_.agents[i].type;
+    }
 
-    double cx = agent.pose.position.x, cy = agent.pose.position.y;
-    double ox = cx - radius_, oy = cy - radius_;
+    if(check_one){
+      unsigned int width = std::max(1, static_cast<int>((2*radius_) / res)),
+                   height = std::max(1, static_cast<int>((2*radius_) / res));
 
-    int mx, my;
-    costmap->worldToMapNoBounds(ox, oy, mx, my);
+      double cx = agent.pose.position.x, cy = agent.pose.position.y;
+      double ox = cx - radius_, oy = cy - radius_;
 
-    int start_x = 0, start_y = 0, end_x = width, end_y = height;
-    if (mx < 0)
-      start_x = -mx;
-    else if (mx + width > costmap->getSizeInCellsX())
-      end_x = std::max(0, static_cast<int>(costmap->getSizeInCellsX()) - mx);
+      int mx, my;
+      costmap->worldToMapNoBounds(ox, oy, mx, my);
 
-    if (static_cast<int>(start_x + mx) < min_i)
-      start_x = min_i - mx;
-    if (static_cast<int>(end_x + mx) > max_i)
-      end_x = max_i - mx;
+      int start_x = 0, start_y = 0, end_x = width, end_y = height;
+      if (mx < 0)
+        start_x = -mx;
+      else if (mx + width > costmap->getSizeInCellsX())
+        end_x = std::max(0, static_cast<int>(costmap->getSizeInCellsX()) - mx);
 
-    if (my < 0)
-      start_y = -my;
-    else if (my + height > costmap->getSizeInCellsY())
-      end_y = std::max(0, static_cast<int>(costmap->getSizeInCellsY()) - my);
+      if (static_cast<int>(start_x + mx) < min_i)
+        start_x = min_i - mx;
+      if (static_cast<int>(end_x + mx) > max_i)
+        end_x = max_i - mx;
 
-    if (static_cast<int>(start_y + my) < min_j)
-      start_y = min_j - my;
-    if (static_cast<int>(end_y + my) > max_j)
-      end_y = max_j - my;
+      if (my < 0)
+        start_y = -my;
+      else if (my + height > costmap->getSizeInCellsY())
+        end_y = std::max(0, static_cast<int>(costmap->getSizeInCellsY()) - my);
 
-    double bx = ox + res / 2,
-           by = oy + res / 2;
+      if (static_cast<int>(start_y + my) < min_j)
+        start_y = min_j - my;
+      if (static_cast<int>(end_y + my) > max_j)
+        end_y = max_j - my;
 
-    double var = radius_;
+      double bx = ox + res / 2,
+             by = oy + res / 2;
 
-    for (int i = start_x; i < end_x; i++)
-    {
-      for (int j = start_y; j < end_y; j++)
+      double var = radius_;
+
+      for (int i = start_x; i < end_x; i++)
       {
-        unsigned char old_cost = costmap->getCost(i + mx, j + my);
-        if (old_cost == costmap_2d::NO_INFORMATION)
-          continue;
+        for (int j = start_y; j < end_y; j++)
+        {
+          unsigned char old_cost = costmap->getCost(i + mx, j + my);
+          if (old_cost == costmap_2d::NO_INFORMATION)
+            continue;
 
-        double x = bx + i * res, y = by + j * res;
-        double val;
-        val = Gaussian2D(x, y, cx, cy, amplitude_, var, var);
-        double rad = sqrt(-2*var*log(val/amplitude_));
+          double x = bx + i * res, y = by + j * res;
+          double val;
+          val = Gaussian2D(x, y, cx, cy, amplitude_, var, var);
+          double rad = sqrt(-2*var*log(val/amplitude_));
 
-        if (rad > radius_)
-          continue;
-        unsigned char cvalue = (unsigned char) val;
-        costmap->setCost(i + mx, j + my, std::max(cvalue, old_cost));
+          if (rad > radius_)
+            continue;
+          unsigned char cvalue = (unsigned char) val;
+          costmap->setCost(i + mx, j + my, std::max(cvalue, old_cost));
+        }
+      }
+    }
+
+    else{
+      double rad;
+      if(agents_.agents[i].type==1){
+        rad = agent_radius;
+      }
+      else{
+        rad = robot_radius;
+      }
+      unsigned int width = std::max(1, static_cast<int>((3*rad) / res)),
+                   height = std::max(1, static_cast<int>((3*rad) / res));
+
+      double cx = agent.pose.position.x, cy = agent.pose.position.y;
+      double ox = cx - rad, oy = cy - rad;
+
+      int mx, my;
+      costmap->worldToMapNoBounds(ox, oy, mx, my);
+
+      int start_x = 0, start_y = 0, end_x = width, end_y = height;
+      if (mx < 0)
+        start_x = -mx;
+      else if (mx + width > costmap->getSizeInCellsX())
+        end_x = std::max(0, static_cast<int>(costmap->getSizeInCellsX()) - mx);
+
+      if (static_cast<int>(start_x + mx) < min_i)
+        start_x = min_i - mx;
+      if (static_cast<int>(end_x + mx) > max_i)
+        end_x = max_i - mx;
+
+      if (my < 0)
+        start_y = -my;
+      else if (my + height > costmap->getSizeInCellsY())
+        end_y = std::max(0, static_cast<int>(costmap->getSizeInCellsY()) - my);
+
+      if (static_cast<int>(start_y + my) < min_j)
+        start_y = min_j - my;
+      if (static_cast<int>(end_y + my) > max_j)
+        end_y = max_j - my;
+
+      for (int i = start_x; i < end_x; i++)
+      {
+        for (int j = start_y; j < end_y; j++)
+        {
+          unsigned char old_cost = costmap->getCost(i + mx, j + my);
+          if (old_cost == costmap_2d::NO_INFORMATION)
+            continue;
+
+          double x, y;
+          costmap->mapToWorld(i+mx, j+my, x, y);
+          x = x-cx, y=y-cy;
+          double inrad = sqrt(x*x+y*y);
+
+          if (inrad > rad)
+            continue;
+
+          double val;
+          if(agents_.agents[i].type==1)
+            val = 255;
+          else if(agents_.agents[i].type==0)
+            val = 254;
+
+          unsigned char cvalue = (unsigned char) val;
+          costmap->setCost(i + mx, j + my, std::max(cvalue, old_cost));
+        }
       }
     }
   }

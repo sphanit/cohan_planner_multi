@@ -582,7 +582,7 @@ bool AgentPathPrediction::predictAgentsExternal(
     tf::StampedTransform robot_to_map_tf, agent_to_map_tf;
     bool transforms_found = false;
     try {
-      tf_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time::now(),
+      tf_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0),
                           robot_to_map_tf);
 
       std::string agents_frame = "map";
@@ -590,7 +590,7 @@ bool AgentPathPrediction::predictAgentsExternal(
         agents_frame = tracked_agents.header.frame_id;
       }
       tf_.lookupTransform(map_frame_id_, agents_frame,
-                          ros::Time::now(), agent_to_map_tf);
+                          ros::Time(0), agent_to_map_tf);
 
       transforms_found = true;
     } catch (tf::LookupException &ex) {
@@ -745,14 +745,14 @@ bool AgentPathPrediction::predictAgentsBehind(
   tf::StampedTransform robot_to_map_tf, agent_to_map_tf;
   bool transforms_found = false;
   try {
-    tf_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time::now(),
+    tf_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0),
                         robot_to_map_tf);
     std::string agents_frame = "map";
     if(tracked_agents.header.frame_id!=""){
       agents_frame = tracked_agents.header.frame_id;
     }
     tf_.lookupTransform(map_frame_id_, agents_frame,
-                        ros::Time::now(), agent_to_map_tf);
+                        ros::Time(0), agent_to_map_tf);
 
     transforms_found = true;
   } catch (tf::LookupException &ex) {
@@ -906,14 +906,14 @@ bool AgentPathPrediction::predictAgentsGoal(
   tf::StampedTransform robot_to_map_tf, agent_to_map_tf;
   bool transforms_found = false;
   try {
-    tf_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time::now(),
+    tf_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0),
                         robot_to_map_tf);
     std::string agents_frame = "map";
     if(tracked_agents.header.frame_id!=""){
       agents_frame = tracked_agents.header.frame_id;
     }
     tf_.lookupTransform(map_frame_id_, agents_frame,
-                        ros::Time::now(), agent_to_map_tf);
+                        ros::Time(0), agent_to_map_tf);
 
     transforms_found = true;
   } catch (tf::LookupException &ex) {
@@ -1230,8 +1230,8 @@ bool AgentPathPrediction::transformPoseTwist(
             tf::poseStampedMsgToTF(pose_ut, pose_tf);
             tf::StampedTransform start_pose_to_plan_transform;
             tf_.waitForTransform(to_frame, pose_ut.header.frame_id,
-                                 ros::Time::now(), ros::Duration(0.5));
-            tf_.lookupTransform(to_frame, pose_ut.header.frame_id, ros::Time::now(),
+                                 ros::Time(0), ros::Duration(0.5));
+            tf_.lookupTransform(to_frame, pose_ut.header.frame_id, ros::Time(0),
                                 start_pose_to_plan_transform);
             pose_tf.setData(start_pose_to_plan_transform * pose_tf);
             pose_tf.frame_id_ = to_frame;

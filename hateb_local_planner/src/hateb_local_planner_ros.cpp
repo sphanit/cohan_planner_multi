@@ -314,7 +314,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
   tracked_agents_ = tracked_agents;
   std::vector<double> agent_dists;
   std::vector<double> agents_behind;
-  // std::vector<bool> agents_behind_ids;
+  std::vector<double> agents_radii;
 
   geometry_msgs::TransformStamped transformStamped;
   std::string base_link = "base_link";
@@ -427,8 +427,8 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
       n=100;
     for(int it=0;it<temp_dist_idx.size();it++){
       //Ray Tracing
-      double tm_x =tracked_agents_.agents[temp_dist_idx[it].second-1].segments[0].pose.pose.position.x;
-      double tm_y =tracked_agents_.agents[temp_dist_idx[it].second-1].segments[0].pose.pose.position.y;
+      double tm_x = tracked_agents_.agents[temp_dist_idx[it].second-1].segments[0].pose.pose.position.x;
+      double tm_y = tracked_agents_.agents[temp_dist_idx[it].second-1].segments[0].pose.pose.position.y;
       auto Dx = (tm_x-xpos)/n;
       auto Dy = (tm_y-ypos)/n;
 
@@ -440,9 +440,18 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
       for(int j=0;j<n;j++){
         unsigned int mx;
         unsigned int my;
+
+        double check_rad;
+        if((int)tracked_agents_.agents[temp_dist_idx[it].second-1].type==1)
+          check_rad = cfg_.agent.radius+0.1;
+        else
+          check_rad = cfg_.agent.robot_radius+0.1;
+
+        if(sqrt((rob_x-tm_x)*(rob_x-tm_x)+(rob_y-tm_y)*(rob_y-tm_y)) <= check_rad)
+          break;
         if( costmap_->worldToMap(rob_x,rob_y,mx,my)){
           auto cellcost = costmap_->getCost(mx,my);
-          if((int)cellcost==254){
+          if((int)cellcost>200 && (int)cellcost<255){
             cell_collision = true;
             break;
           }
@@ -455,6 +464,11 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
 			if(!cell_collision)
 			{
         visible_agent_ids.push_back(hum_id);
+        if((int)tracked_agents_.agents[hum_id-1].type==1)
+          agents_radii.push_back(cfg_.agent.radius);
+        else
+          agents_radii.push_back(cfg_.agent.robot_radius);
+
 				if(agents_states_.states[hum_id-1]==hateb_local_planner::AgentState::NO_STATE){
 					agents_states_.states[hum_id-1] = hateb_local_planner::AgentState::STATIC;
 				}
@@ -465,6 +479,10 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
     for(int it=0;it<2 && it<temp_dist_idx.size();it++){
       if(temp_dist_idx[it].second == stuck_agent_id){
         visible_agent_ids.push_back(temp_dist_idx[it].second);
+        if((int)tracked_agents_.agents[temp_dist_idx[it].second-1].type==1)
+          agents_radii.push_back(cfg_.agent.radius);
+        else
+          agents_radii.push_back(cfg_.agent.robot_radius);
         break;
       }
     }
@@ -472,40 +490,40 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
 
     // Safety step for agents if agent_layers is not added in local costmap
     // Adds a temporary costmap around the agents to let planner plan safe trajectories
-    auto agent_radius = 0.3;
-    // if(isMode>=1)
-    //   agent_radius = 0.08;
 
+    if(cfg_.planning_mode > 0){
     for(int i=0;i<visible_agent_ids.size() && i<hum_xpos.size();i++){
-    geometry_msgs::Point v1,v2,v3,v4;
-    auto idx = visible_agent_ids[i]-1;
-    v1.x = hum_xpos[idx]-agent_radius,v1.y=hum_ypos[idx]-agent_radius,v1.z=0.0;
-    v2.x = hum_xpos[idx]-agent_radius,v2.y=hum_ypos[idx]+agent_radius,v2.z=0.0;
-    v3.x = hum_xpos[idx]+agent_radius,v3.y=hum_ypos[idx]+agent_radius,v3.z=0.0;
-    v4.x = hum_xpos[idx]+agent_radius,v4.y=hum_ypos[idx]-agent_radius,v4.z=0.0;
+      geometry_msgs::Point v1,v2,v3,v4;
+      auto idx = visible_agent_ids[i]-1;
+      auto agent_radius = agents_radii[idx];
+      v1.x = hum_xpos[idx]-agent_radius,v1.y=hum_ypos[idx]-agent_radius,v1.z=0.0;
+      v2.x = hum_xpos[idx]-agent_radius,v2.y=hum_ypos[idx]+agent_radius,v2.z=0.0;
+      v3.x = hum_xpos[idx]+agent_radius,v3.y=hum_ypos[idx]+agent_radius,v3.z=0.0;
+      v4.x = hum_xpos[idx]+agent_radius,v4.y=hum_ypos[idx]-agent_radius,v4.z=0.0;
 
-    std::vector<geometry_msgs::Point> agent_pos_costmap;
+      std::vector<geometry_msgs::Point> agent_pos_costmap;
 
-    if(cfg_.robot.is_real){
-  		transformStamped = tf_->lookupTransform("odom_combined","map",ros::Time(0),ros::Duration(0.5));
-  		tf2::doTransform(v1,v1,transformStamped);
-  		tf2::doTransform(v2,v2,transformStamped);
-  		tf2::doTransform(v3,v3,transformStamped);
-  		tf2::doTransform(v4,v4,transformStamped);
+      if(cfg_.robot.is_real){
+    		transformStamped = tf_->lookupTransform("odom_combined","map",ros::Time(0),ros::Duration(0.5));
+    		tf2::doTransform(v1,v1,transformStamped);
+    		tf2::doTransform(v2,v2,transformStamped);
+    		tf2::doTransform(v3,v3,transformStamped);
+    		tf2::doTransform(v4,v4,transformStamped);
+      }
+
+      agent_pos_costmap.push_back(v1);
+      agent_pos_costmap.push_back(v2);
+      agent_pos_costmap.push_back(v3);
+      agent_pos_costmap.push_back(v4);
+
+      // if(!agent_prev_pos_costmap.empty()){
+      //   costmap_->setConvexPolygonCost(agent_prev_pos_costmap[idx+1], 0.0);
+      // }
+      // agent_prev_pos_costmap[idx+1] = agent_pos_costmap;
+
+      bool set_success = false;
+      set_success = costmap_->setConvexPolygonCost(agent_pos_costmap, 255.0);
     }
-
-    agent_pos_costmap.push_back(v1);
-    agent_pos_costmap.push_back(v2);
-    agent_pos_costmap.push_back(v3);
-    agent_pos_costmap.push_back(v4);
-
-    // if(!agent_prev_pos_costmap.empty()){
-    //   costmap_->setConvexPolygonCost(agent_prev_pos_costmap[idx+1], 0.0);
-    // }
-    // agent_prev_pos_costmap[idx+1] = agent_pos_costmap;
-
-    bool set_success = false;
-    set_success = costmap_->setConvexPolygonCost(agent_pos_costmap, 255.0);
   }
 }
 
@@ -568,7 +586,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
   last_robot_pose  = robot_pose.pose;
 
-  if((ros::Time::now()-last_position_time).toSec()>=2.0){
+  if((ros::Time::now()-last_position_time).toSec()>=2.0 && cfg_.robot.type==0){   //0: Robot and 1: Human for type
     if(visible_agent_ids.size()>0){
       if(agent_still[visible_agent_ids[0]-1] && isDistunderThreshold && !stuck){
         if(change_mode==0){
@@ -766,7 +784,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
       isMode = -1;
 
     for(int i=0;i<2 && i<visible_agent_ids.size();i++){
-      if((int)agents_states_.states[visible_agent_ids[i]-1]>0){
+      if((int)agents_states_.states[visible_agent_ids[i]-1]>1){
         predict_srv.request.ids.push_back(visible_agent_ids[i]);
         if(isMode==-1)
           isMode = 0;
@@ -1308,7 +1326,7 @@ void HATebLocalPlannerROS::updateObstacleContainerWithCustomObstacles()
     {
       geometry_msgs::TransformStamped obstacle_to_map =  tf_->lookupTransform(global_frame_, ros::Time::now(),
                                                                               custom_obstacle_msg_.header.frame_id, ros::Time::now(),
-                                                                              custom_obstacle_msg_.header.frame_id, ros::Duration(0.5));
+                                                                              custom_obstacle_msg_.header.frame_id, ros::Duration(0.8));
       obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
     }
     catch (tf::TransformException ex)

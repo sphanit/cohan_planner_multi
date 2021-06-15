@@ -118,6 +118,7 @@ protected:
   ros::Time last_time;
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
   double radius_, amplitude_, covar_, cutoff_;
+  double robot_radius = 0.46, agent_radius=0.31;
 
 };
 }  // namespace cohan_layers

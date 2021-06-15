@@ -78,6 +78,7 @@ void HATebConfig::loadRosParamFromNodeHandle(const ros::NodeHandle& nh)
   nh.param("horizon_reduction_amount", trajectory.horizon_reduction_amount, trajectory.horizon_reduction_amount);
   nh.param("teb_init_skip_dist", trajectory.teb_init_skip_dist, trajectory.teb_init_skip_dist);
   // Robot
+  nh.param("type", robot.type, robot.type);
   nh.param("max_vel_x", robot.max_vel_x, robot.max_vel_x);
   nh.param("max_vel_x_backwards", robot.max_vel_x_backwards, robot.max_vel_x_backwards);
   nh.param("max_vel_y", robot.max_vel_y, robot.max_vel_y);
@@ -93,6 +94,7 @@ void HATebConfig::loadRosParamFromNodeHandle(const ros::NodeHandle& nh)
 
   // Agent
   nh.param("agent_radius", agent.radius, agent.radius);
+  nh.param("robot_radius", agent.robot_radius, agent.robot_radius);
   nh.param("max_agent_vel_x", agent.max_vel_x, agent.max_vel_x);
   nh.param("max_agent_vel_y", agent.max_vel_y, agent.max_vel_y);
   nh.param("nominal_agent_vel_x", agent.nominal_vel_x, agent.nominal_vel_x);

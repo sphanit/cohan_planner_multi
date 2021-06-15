@@ -97,6 +97,7 @@ public:
   //! Robot related parameters
   struct Robot
   {
+    int type;
     double max_vel_x; //!< Maximum translational velocity of the robot
     double max_vel_x_backwards; //!< Maximum translational velocity of the robot for driving backwards
     double max_vel_y; //!< Maximum strafing velocity of the robot (should be zero for non-holonomic robots!)
@@ -115,6 +116,7 @@ public:
   struct Agent
   {
     double radius;
+    double robot_radius;
     double max_vel_x;
     double max_vel_y;
     double min_vel_x;
@@ -355,6 +357,7 @@ public:
 
     // Robot
 
+    robot.type = 0;
     robot.max_vel_x = 0.4;
     robot.max_vel_x_backwards = 0.2;
     robot.max_vel_y = 0.0;
@@ -370,6 +373,7 @@ public:
 
     // Agent
     agent.radius = 0.2;
+    agent.robot_radius = 0.4;
     agent.max_vel_x = 1.3;
     agent.nominal_vel_x = 1.1;
     agent.max_vel_y = 0.4;

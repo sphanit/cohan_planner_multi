@@ -111,7 +111,7 @@
 
 namespace hateb_local_planner
 {
-enum AgentState {STATIC,MOVING,STOPPED,BLOCKED,NO_STATE};
+enum AgentState {NO_STATE,STATIC,MOVING,STOPPED,BLOCKED};
 
 /**
   * @class HATebLocalPlannerROS

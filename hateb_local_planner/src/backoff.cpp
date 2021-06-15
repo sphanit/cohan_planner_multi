@@ -142,15 +142,15 @@
 
 	   //std::cout << start_pose_tr.getOrigin().x() << '\n';
 
-     behind_tr.setOrigin(tf::Vector3(-0.5, 0.0, 0.0));
+     behind_tr.setOrigin(tf::Vector3(-1.0, 0.0, 0.0));
      behind_tr.setRotation(tf::createQuaternionFromYaw(0.0));
      behind_tr = robot_to_map_tf * behind_tr;
 
-     right_tr.setOrigin(tf::Vector3(-0.2, -1.0, 0.0));
+     right_tr.setOrigin(tf::Vector3(-0.5, -1.0, 0.0));
      right_tr.setRotation(tf::createQuaternionFromYaw(0.0));
      right_tr = robot_to_map_tf * right_tr;
 
-     left_tr.setOrigin(tf::Vector3(-0.2, 1.0, 0.0));
+     left_tr.setOrigin(tf::Vector3(-0.5, 1.0, 0.0));
      left_tr.setRotation(tf::createQuaternionFromYaw(0.0));
      left_tr = robot_to_map_tf * left_tr;
 

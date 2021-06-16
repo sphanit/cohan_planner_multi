@@ -54,9 +54,11 @@ void AgentLayer::onInitialize()
   ros::NodeHandle nh("~/" + name_), g_nh;
   agents_sub_ = nh.subscribe(TRACKED_AGENT_SUB, 1, &AgentLayer::agentsCB, this);
   agents_states_sub_ = nh.subscribe(AGENTS_STATES_SUB, 1, &AgentLayer::statesCB, this);
+  stopmap_srv = nh.advertiseService("shutdown_layer", &AgentLayer::shutdownCB, this);
 
   current_ = true;
   first_time_ = true;
+  shutdown_ = false;
 }
 
 void AgentLayer::agentsCB(const cohan_msgs::TrackedAgents& agents)
@@ -70,6 +72,19 @@ void AgentLayer::statesCB(const cohan_msgs::StateArray& states){
   states_ = states;
   reset = false;
   last_time = ros::Time::now();
+}
+
+bool AgentLayer::shutdownCB(std_srvs::SetBoolRequest&req, std_srvs::SetBoolResponse &res){
+  shutdown_ = req.data;
+  if(shutdown_ == true){
+    res.success = true;
+    res.message = "Shutting down the agent layer costmaps..";
+  }
+  else{
+    res.success = true;
+    res.message = "Agent layer is switched on !";
+  }
+  return true;
 }
 
 
@@ -89,7 +104,7 @@ void AgentLayer::updateBounds(double origin_x, double origin_y, double origin_z,
   for(auto &agent : agents_.agents){
     for(auto &segment : agent.segments){
       if((segment.type == DEFAULT_AGENT_PART) && !reset){
-        if(!states_.states.empty()){
+        if(!states_.states.empty() && !shutdown_){
           AgentPoseVel agent_pose_vel;
           agent_pose_vel.header.frame_id = agents_.header.frame_id;
           agent_pose_vel.header.stamp = agents_.header.stamp;
@@ -133,7 +148,7 @@ void AgentLayer::updateBounds(double origin_x, double origin_y, double origin_z,
           }
         }
       }
-      else if(reset){
+      else if(reset && !shutdown_){
         AgentPoseVel agent_pose_vel;
         agent_pose_vel.header.frame_id = agents_.header.frame_id;
         agent_pose_vel.header.stamp = agents_.header.stamp;

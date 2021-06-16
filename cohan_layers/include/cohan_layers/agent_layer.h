@@ -47,6 +47,7 @@
 #include <cohan_msgs/TrackedSegmentType.h>
 #include <dynamic_reconfigure/server.h>
 #include <boost/thread.hpp>
+#include <std_srvs/SetBool.h>
 
 namespace cohan_layers
 {
@@ -81,6 +82,8 @@ protected:
 
   void statesCB(const cohan_msgs::StateArray& states);
 
+  bool shutdownCB(std_srvs::SetBoolRequest&req, std_srvs::SetBoolResponse &res);
+
   double Guassian1D(double x, double x0, double A, double varx){
     double dx = x-x0;
     return A*exp(-pow(dx,2.0)/(2.0*varx));
@@ -109,12 +112,14 @@ protected:
     return sqrt(-2 * var * log(cutoff / A));
   }
 
+
   ros::Subscriber agents_sub_, agents_states_sub_;
+  ros::ServiceServer stopmap_srv;
   cohan_msgs::TrackedAgents agents_;
   cohan_msgs::StateArray states_;
   std::vector<AgentPoseVel> transformed_agents_;
   boost::recursive_mutex lock_;
-  bool first_time_, reset;
+  bool first_time_, reset, shutdown_;
   ros::Time last_time;
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
   double radius_, amplitude_, covar_, cutoff_;

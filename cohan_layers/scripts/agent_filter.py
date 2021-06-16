@@ -23,6 +23,10 @@ class AgentFilter(object):
         self.laser_transform = TransformStamped()
         self.got_scan = False
 
+        #Intialize tf2 transform listener
+        self.tf = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tf)
+
         if sim=="stage":
             base = "/base_scan"
         elif sim=="morse":
@@ -34,10 +38,6 @@ class AgentFilter(object):
         rospy.Subscriber(base, LaserScan, self.laserCB)
         rospy.Subscriber("tracked_agents", TrackedAgents, self.agentsCB)
         self.laser_pub = rospy.Publisher("base_scan_filtered", LaserScan, queue_size=10)
-
-        #Intialize tf2 transform listener
-        self.tf = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tf)
 
         rospy.Timer(rospy.Duration(0.02), self.publishScan)
 

@@ -213,7 +213,7 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
           if(agents_.agents[i].type==1)
             val = 255;
           else if(agents_.agents[i].type==0)
-            val = 254;
+            val = 255;
 
           unsigned char cvalue = (unsigned char) val;
           costmap->setCost(i + mx, j + my, std::max(cvalue, old_cost));

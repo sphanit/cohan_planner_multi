@@ -1229,6 +1229,8 @@ bool AgentPathPrediction::transformPoseTwist(
             tf::Stamped<tf::Pose> pose_tf;
             tf::poseStampedMsgToTF(pose_ut, pose_tf);
             tf::StampedTransform start_pose_to_plan_transform;
+            if(to_frame=="" || pose_ut.header.frame_id=="" || twist.header.frame_id=="")
+              continue;
             tf_.waitForTransform(to_frame, pose_ut.header.frame_id,
                                  ros::Time(0), ros::Duration(0.5));
             tf_.lookupTransform(to_frame, pose_ut.header.frame_id, ros::Time(0),

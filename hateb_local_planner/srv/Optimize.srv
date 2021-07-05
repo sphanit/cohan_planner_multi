@@ -5,3 +5,4 @@ cohan_msgs/AgentPathArray agent_path_array
 ---
 bool success
 string message
+geometry_msgs/Twist cmd_vel

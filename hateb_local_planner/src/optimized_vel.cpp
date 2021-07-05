@@ -34,55 +34,43 @@
  *
  * Author: Phani Teja Singamaneni (email:ptsingaman@laas.fr)
  *********************************************************************/
-#define NAME "HATebStaticPlanVisualizer"
-// #define GET_PLAN_SRV "/move_base/GlobalPlanner/make_plan"
-// #define OPTIMIZE_SRV "/move_base/HATebLocalPlannerROS/optimize"
-#define GET_PLAN_SRV "/gbl_planner/planner/make_plan"
+#include <hateb_local_planner/optimized_vel.h>
+#define GET_PLAN_SRV "/global_planner/planner/make_plan"
 #define OPTIMIZE_SRV "/local_planner/hateb_local_planner_test/optimize"
 #define AGENTS_SUB "/tracked_agents"
-#define ROBOT_GOAL_SUB "/clicked_point"
+// #define ROBOT_GOAL_SUB "robot_goal"
 #define DEFAULT_AGENT_PART cohan_msgs::TrackedSegmentType::TORSO
 
-#include <hateb_local_planner/static_plan_visualizer.h>
 
 namespace hateb_local_planner{
-StaticPlanVisualization::StaticPlanVisualization(tf2_ros::Buffer &tf2_) : initialized_(false), predict_behind_robot_(true), got_robot_plan(false),
+OptimizedVel::OptimizedVel(tf2_ros::Buffer &tf2_) : initialized_(false), predict_behind_robot_(true), got_robot_plan(false),
                                                      got_agent_plan(false), tf_(tf2_), tfListener_(tf_)
 {
 }
 
-StaticPlanVisualization::~StaticPlanVisualization()
+OptimizedVel::~OptimizedVel()
 {
 }
 
-void StaticPlanVisualization::initialize()
+void OptimizedVel::initialize()
 {
   if(!initialized_){
     ros::NodeHandle nh("~");
 
-    if(!ros::param::get("~ns",ns_)){
-        ns_ = std::string("");
-    }
-
     std::string get_plan_srv_name = std::string(GET_PLAN_SRV);
     std::string optimize_srv_name = std::string(OPTIMIZE_SRV);
-    if(ns_!=""){
-      get_plan_srv_name = "/"+ns_+get_plan_srv_name;
-      optimize_srv_name = "/"+ns_+optimize_srv_name;
-    }
 
     getPlan_client  = nh.serviceClient<nav_msgs::GetPlan>(get_plan_srv_name, true);
     optimize_client = nh.serviceClient<hateb_local_planner::Optimize>(optimize_srv_name, true);
-    agents_sub_ = nh.subscribe(AGENTS_SUB, 1, &StaticPlanVisualization::UpdateStartPoses, this);
-    robot_goal_sub_ = nh.subscribe(ROBOT_GOAL_SUB, 1, &StaticPlanVisualization::UpdateGoalsAndOptimize, this);
-    optimize_srv_ = nh.advertiseService("optimize_srv", &StaticPlanVisualization::optimize_srv, this);
+    agents_sub_ = nh.subscribe(AGENTS_SUB, 1, &OptimizedVel::UpdateStartPoses, this);
+    get_vel_srv_ = nh.advertiseService("get_vel", &OptimizedVel::get_vel_srv, this);
     initialized_ = true;
+    ROS_INFO("Everything is ready !");
   }
 }
 
-void StaticPlanVisualization::UpdateStartPoses(const cohan_msgs::TrackedAgents &tracked_agents){
+void OptimizedVel::UpdateStartPoses(const cohan_msgs::TrackedAgents &tracked_agents){
   agents_start_poses.clear();
-  // tf2_ros::TransformListener tfListener_(tf_);
   tracked_agents_ = tracked_agents;
   for(auto &agent: tracked_agents_.agents){
     for(auto &segment : agent.segments){
@@ -98,9 +86,6 @@ void StaticPlanVisualization::UpdateStartPoses(const cohan_msgs::TrackedAgents &
 
   try{
     std::string base = "base_footprint";
-    if(ns_!=""){
-      base = ns_+"/"+base;
-    }
     robot_to_map_tf = tf_.lookupTransform("map", base, ros::Time(0));
   }
   catch (tf2::TransformException &ex) {
@@ -117,10 +102,10 @@ void StaticPlanVisualization::UpdateStartPoses(const cohan_msgs::TrackedAgents &
   robot_start_pose.pose.orientation.w =  robot_to_map_tf.transform.rotation.w;
 }
 
-void StaticPlanVisualization::UpdateGoalsAndOptimize(const geometry_msgs::PointStamped &robot_goal_point){
-  robot_goal_.pose.position = robot_goal_point.point;
-  robot_goal_.header = robot_goal_point.header;
-  robot_goal_.pose.orientation = robot_start_pose.pose.orientation;
+geometry_msgs::Twist OptimizedVel::OptimizeAndgetVel(const geometry_msgs::PoseStamped &robot_goal){
+  robot_goal_= robot_goal;
+  geometry_msgs::Twist cmd_vel_;
+
   auto now = ros::Time::now();
   nav_msgs::GetPlan agent_plan_srv, robot_plan_srv;
   cohan_msgs::AgentPathArray hum_path_arr;
@@ -137,14 +122,12 @@ void StaticPlanVisualization::UpdateGoalsAndOptimize(const geometry_msgs::PointS
       got_robot_plan = false;
   }
 
-
   int idx = 0;
   for(auto &agent : tracked_agents_.agents){
     if(agent.track_id == 1){
       if(predict_behind_robot_){
         tf2::Transform behind_tr, robot_to_map_tf_;
         behind_tr.setOrigin(tf2::Vector3(-0.5, 0.0, 0.0));
-        // behind_tr.setRotation(tf2::Quaternion(3.1416,0.0,0.0));
         tf2::fromMsg(robot_to_map_tf.transform,robot_to_map_tf_);
         behind_tr = robot_to_map_tf_ * behind_tr;
         geometry_msgs::Pose behind_pose;
@@ -192,65 +175,38 @@ void StaticPlanVisualization::UpdateGoalsAndOptimize(const geometry_msgs::PointS
 
     if(optimize_client.call(optim_srv)){
       if(optim_srv.response.success){
-        std::cout << optim_srv.response.message << '\n';
-        std::cout << optim_srv.response.cmd_vel << '\n';
+        // ROS_INFO("Optimization success");
+        cmd_vel_ = optim_srv.response.cmd_vel;
       }
       else
         ROS_INFO("Optimization failed !!");
       }
   }
+
+  return cmd_vel_;
 }
 
-bool StaticPlanVisualization::optimize_srv(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res){
-    if(got_agent_plan && got_robot_plan){
-      hateb_local_planner::Optimize optim_srv;
+bool OptimizedVel::get_vel_srv(hateb_local_planner::getOptimVel::Request &req, hateb_local_planner::getOptimVel::Response &res){
 
-      optim_srv.request.robot_plan = robot_plan;
-      if(req.data)
-        optim_srv.request.agent_path_array = agents_plans;
-      else{
-        nav_msgs::GetPlan agent_plan_srv, robot_plan_srv;
-        cohan_msgs::AgentPathArray hum_path_arr;
-        hum_path_arr.header.frame_id = "map";
-        hum_path_arr.header.stamp = ros::Time::now();
+  auto cmd_vel_ = OptimizeAndgetVel(req.robot_goal);
 
-        cohan_msgs::AgentPath temp;
-        temp.header = agents_start_poses[0].header;
-        temp.id = 1;
-        temp.path.poses.push_back(agents_start_poses[0]);
-        hum_path_arr.paths.push_back(temp);
+  res.success = true;
+  res.message = "Got optim vel";
+  res.cmd_vel = cmd_vel_;
 
-        optim_srv.request.agent_path_array = hum_path_arr;
-        }
-
-      if(optimize_client.call(optim_srv)){
-      	if(optim_srv.response.success){
-      	  res.success = true;
-      	  res.message = optim_srv.response.message;
-      	  std::cout << optim_srv.response.message << '\n';
-      	}
-      	else{
-      	  res.success = false;
-      	  res.message = "Optimization failed..!!";
-      	  ROS_INFO("Optimization failed !!");
-      	}
-            }
-  }
-
-    return true;
- }
-
+  return true;
+}
 
 }// namespace hateb_local_planner
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, NAME);
+  ros::init(argc, argv, "optim_vel");
 
   tf2_ros::Buffer tf2;
 
-  hateb_local_planner::StaticPlanVisualization static_viz(tf2);
-  static_viz.initialize();
+  hateb_local_planner::OptimizedVel getvel(tf2);
+  getvel.initialize();
 
   ros::spin();
 

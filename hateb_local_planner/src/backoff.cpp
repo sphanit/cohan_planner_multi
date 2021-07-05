@@ -340,7 +340,7 @@
    start_pose_tr.setRotation(tf::createQuaternionFromYaw(0.0));
    //Transform current goal to map frame
    //tf::StampedTransform stmptransform;
-   tf_.waitForTransform("map", map_frame, ros::Time(0), ros::Duration(0.5));
+   // tf_.waitForTransform("map", map_frame, ros::Time(0), ros::Duration(0.5));
    //tf_.lookupTransform("map", map_frame, ros::Time(0),stmptransform);
 	 start_pose_tr = robot_to_map_tf * start_pose_tr;
 	 geometry_msgs::QuaternionStamped quat;

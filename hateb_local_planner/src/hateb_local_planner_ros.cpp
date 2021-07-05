@@ -91,6 +91,17 @@ HATebLocalPlannerROS::HATebLocalPlannerROS() : costmap_ros_(NULL), tf_(NULL), co
 {
 }
 
+HATebLocalPlannerROS::HATebLocalPlannerROS(std::string name, tf2_ros::Buffer* tf, costmap_2d::Costmap2DROS* costmap_ros)
+: costmap_ros_(NULL), tf_(NULL), costmap_model_(NULL),
+  costmap_converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"),
+  dynamic_recfg_(NULL), custom_via_points_active_(false), goal_reached_(false), no_infeasible_plans_(0),
+  last_preferred_rotdir_(RotType::none),horizon_reduced_(false), initialized_(false){
+
+  //initialize the planner
+  initialize(name, tf, costmap_ros);
+}
+
+
 HATebLocalPlannerROS::~HATebLocalPlannerROS()
 {
 }
@@ -2319,7 +2330,7 @@ void HATebLocalPlannerROS::resetAgentsPrediction() {
 bool HATebLocalPlannerROS::optimizeStandalone(
     hateb_local_planner::Optimize::Request &req,
     hateb_local_planner::Optimize::Response &res) {
-  ROS_INFO("optimize service called");
+  // ROS_INFO("optimize service called");
   auto start_time = ros::Time::now();
 
   // check if plugin initialized
@@ -2335,7 +2346,7 @@ bool HATebLocalPlannerROS::optimizeStandalone(
   costmap_ros_->getRobotPose(robot_pose_tf);
 
   // transform global plan to the frame of local costmap
-  ROS_INFO("transforming robot global plans");
+  // ROS_INFO("transforming robot global plans");
   PlanCombined transformed_plan_combined;
   int goal_idx;
   geometry_msgs::TransformStamped tf_robot_plan_to_global;
@@ -2349,8 +2360,8 @@ bool HATebLocalPlannerROS::optimizeStandalone(
     return true;
   }
   auto &transformed_plan = transformed_plan_combined.plan_to_optimize;
-  ROS_INFO("transformed plan contains %ld points (out of %ld)",
-           transformed_plan.size(), req.robot_plan.poses.size());
+  // ROS_INFO("transformed plan contains %ld points (out of %ld)",
+  //          transformed_plan.size(), req.robot_plan.poses.size());
 
   // check if the transformed robot plan is empty
   if (transformed_plan.empty()) {
@@ -2396,7 +2407,7 @@ bool HATebLocalPlannerROS::optimizeStandalone(
       agent_pos_cov.pose.pose = agent_pose.pose;
       agent_path_cov.push_back(agent_pos_cov);
     }
-    ROS_INFO("transforming agent %ld plan", agent_path.id);
+    // ROS_INFO("transforming agent %ld plan", agent_path.id);
     if (!transformAgentPlan(*tf_, robot_pose_tf, *costmap_, global_frame_,
                             agent_path_cov, agent_plan_combined,
                             transformed_vel, &tf_agent_plan_to_global)) {
@@ -2408,13 +2419,13 @@ bool HATebLocalPlannerROS::optimizeStandalone(
     auto transformed_plan_size = agent_plan_combined.plan_before.size() +
                                  agent_plan_combined.plan_to_optimize.size() +
                                  agent_plan_combined.plan_after.size();
-    ROS_INFO("transformed agent %ld plan contains %ld (before %ld, "
-             "to-optimize %ld, after %ld) points (out of %ld (%ld))",
-             agent_path.id, transformed_plan_size,
-             agent_plan_combined.plan_before.size(),
-             agent_plan_combined.plan_to_optimize.size(),
-             agent_plan_combined.plan_after.size(), agent_path_cov.size(),
-             agent_path.path.poses.size());
+    // ROS_INFO("transformed agent %ld plan contains %ld (before %ld, "
+    //          "to-optimize %ld, after %ld) points (out of %ld (%ld))",
+    //          agent_path.id, transformed_plan_size,
+    //          agent_plan_combined.plan_before.size(),
+    //          agent_plan_combined.plan_to_optimize.size(),
+    //          agent_plan_combined.plan_after.size(), agent_path_cov.size(),
+    //          agent_path.path.poses.size());
     // TODO: check for empty agent transformed plan
 
     agent_plan_combined.id = agent_path.id;
@@ -2513,6 +2524,8 @@ bool HATebLocalPlannerROS::optimizeStandalone(
   // saturate velocity
   saturateVelocity(cmd_vel.linear.x, cmd_vel.linear.y, cmd_vel.angular.z, cfg_.robot.max_vel_x, cfg_.robot.max_vel_y,
                    cfg_.robot.max_vel_theta, cfg_.robot.max_vel_x_backwards);
+
+  res.cmd_vel = cmd_vel;
 
   auto vel_time = ros::Time::now() - vel_start_time;
 

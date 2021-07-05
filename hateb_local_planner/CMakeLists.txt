@@ -121,6 +121,7 @@ add_service_files(
   Optimize.srv
   getPlanning.srv
   setPlanning.srv
+  getOptimVel.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -219,6 +220,8 @@ target_link_libraries(hateb_local_planner
 
 add_executable(test_optim_node src/test_optim_node.cpp)
 add_executable(static_visualize src/static_plan_visualizer.cpp)
+add_executable(get_optim_vel src/optimized_vel.cpp)
+add_executable(local_planner src/local_planner_node.cpp)
 
 target_link_libraries(test_optim_node
    hateb_local_planner
@@ -227,6 +230,18 @@ target_link_libraries(test_optim_node
 )
 
 target_link_libraries(static_visualize
+   hateb_local_planner
+   ${EXTERNAL_LIBS}
+   ${catkin_LIBRARIES}
+)
+
+target_link_libraries(get_optim_vel
+   hateb_local_planner
+   ${EXTERNAL_LIBS}
+   ${catkin_LIBRARIES}
+)
+
+target_link_libraries(local_planner
    hateb_local_planner
    ${EXTERNAL_LIBS}
    ${catkin_LIBRARIES}

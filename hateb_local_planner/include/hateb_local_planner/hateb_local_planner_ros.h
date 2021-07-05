@@ -133,6 +133,9 @@ public:
     */
   ~HATebLocalPlannerROS();
 
+  //CPP wrapper for the planner
+  HATebLocalPlannerROS(std::string name, tf2_ros::Buffer* tf, costmap_2d::Costmap2DROS* costmap_ros);
+
   /**
     * @brief Initializes the teb plugin
     * @param name The name of the instance

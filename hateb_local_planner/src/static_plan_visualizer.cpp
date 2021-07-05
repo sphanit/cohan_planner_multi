@@ -35,10 +35,8 @@
  * Author: Phani Teja Singamaneni (email:ptsingaman@laas.fr)
  *********************************************************************/
 #define NAME "HATebStaticPlanVisualizer"
-// #define GET_PLAN_SRV "/move_base/GlobalPlanner/make_plan"
-// #define OPTIMIZE_SRV "/move_base/HATebLocalPlannerROS/optimize"
-#define GET_PLAN_SRV "/gbl_planner/planner/make_plan"
-#define OPTIMIZE_SRV "/local_planner/hateb_local_planner_test/optimize"
+#define GET_PLAN_SRV "/move_base/GlobalPlanner/make_plan"
+#define OPTIMIZE_SRV "/move_base/HATebLocalPlannerROS/optimize"
 #define AGENTS_SUB "/tracked_agents"
 #define ROBOT_GOAL_SUB "/clicked_point"
 #define DEFAULT_AGENT_PART cohan_msgs::TrackedSegmentType::TORSO

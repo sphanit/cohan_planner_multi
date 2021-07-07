@@ -101,9 +101,7 @@ void TebOptimalPlanner::initialize(const HATebConfig& cfg, ObstContainer* obstac
   vel_goal_.second.angular.z = 0;
 
   robot_radius_ = robot_model_->getCircumscribedRadius();
-  // std::cout << "robot_radius " <<robot_radius_<< '\n';
   agent_radius_ = agent_model_->getCircumscribedRadius();
-  // std::cout << "agent_model_ " << agent_radius_<< '\n';
 
   initialized_ = true;
   isMode = 0;
@@ -287,7 +285,6 @@ void TebOptimalPlanner::setVelocityGoal(const geometry_msgs::Twist& vel_goal)
 
 bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& initial_plan, const geometry_msgs::Twist* start_vel, bool free_goal_vel, const AgentPlanVelMap *initial_agent_plan_vel_map, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
 {
-  // std::cout << "I am in the traj plan function" << '\n';
   ROS_ASSERT_MSG(initialized_, "Call initialize() first.");
   auto prep_start_time = ros::Time::now();
   if (!teb_.isInit())
@@ -314,7 +311,6 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
         && (goal_.position() - teb_.BackPose().position()).norm() < cfg_->trajectory.force_reinit_new_goal_dist
         && fabs(g2o::normalize_theta(goal_.theta() - teb_.BackPose().theta())) < cfg_->trajectory.force_reinit_new_goal_angular)
     { // actual warm start!
-      // std::cout << teb_.sizePoses() << '\n';
       teb_.updateAndPruneTEB(start_, goal_, cfg_->trajectory.min_samples); // update TEB
     }
     else // goal too far away -> reinit
@@ -382,6 +378,7 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
 
       if (agents_tebs_map_.find(agent_id) == agents_tebs_map_.end())
       {
+
         // create new agent-teb for new agent
         agents_tebs_map_[agent_id] = TimedElasticBand();
         // agents_tebs_map_[agent_id].initTrajectoryToGoal(initial_agent_plan, cfg_->agent.max_vel_x, true, cfg_->trajectory.agent_min_samples, cfg_->trajectory.allow_init_with_backwards_motion, cfg_->trajectory.teb_init_skip_dist);
@@ -724,7 +721,6 @@ void TebOptimalPlanner::AddTEBVertices()
   case 1: {
     for (auto &agent_teb_kv : agents_tebs_map_) {
       auto &agent_teb = agent_teb_kv.second;
-      // std::cout << "AgentTebsizes " << agent_teb.sizePoses() << '\n';
       for (int i = 0; i < agent_teb.sizePoses(); ++i) {
         agent_teb.PoseVertex(i)->setId(id_counter++);
         optimizer_->addVertex(agent_teb.PoseVertex(i));
@@ -1974,7 +1970,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       time_opt_cost += cur_cost;
       time_opt_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout<< "EdgeTimeOptimal " << cur_cost<< '\n';
       continue;
     }
 
@@ -1982,14 +1977,12 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       shortest_path_cost += cur_cost;
       shortest_path_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeShortestPath " << cur_cost<< '\n';
       continue;
     }
 
     if (dynamic_cast<EdgePreferRotDir *>(*it) != nullptr) {
       rot_dir_cost += cur_cost;
       cost_ += cur_cost;
-      // std::cout << "EdgePreferRotDir " << cur_cost<< '\n';
       continue;
     }
 
@@ -1997,7 +1990,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       kinematics_dd_cost += cur_cost;
       kinematics_dd_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeKinematicsDiffDrive " << cur_cost<< '\n';
       continue;
     }
 
@@ -2005,7 +1997,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       kinematics_cl_cost += cur_cost;
       kinematics_cl_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeKinematicsCarlike " << cur_cost<< '\n';
       continue;
     }
 
@@ -2013,7 +2004,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       robot_vel_cost += cur_cost;
       robot_vel_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeVelocity " << cur_cost<< '\n';
       continue;
     }
 
@@ -2022,7 +2012,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       robot_vel_holo_cost_vector.push_back(cur_cost);
 
       cost_ += cur_cost;
-      // std::cout << "EdgeVelocityHolonomic " << cur_cost<< '\n';
       continue;
     }
 
@@ -2030,7 +2019,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       agent_vel_cost += cur_cost;
       agent_vel_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeVelocityAgent " << cur_cost<< '\n';
       continue;
     }
 
@@ -2038,7 +2026,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       agent_vel_holo_cost += cur_cost;
       agent_vel_holo_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeVelocityHolonomicAgent " << cur_cost<< '\n';
       continue;
     }
 
@@ -2048,7 +2035,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       robot_acc_cost += cur_cost;
       robot_acc_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeAcceleration " << cur_cost<< '\n';
       continue;
     }
 
@@ -2056,7 +2042,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       robot_acc_holo_cost += cur_cost;
       robot_acc_holo_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeAccelerationHolonomic " << cur_cost<< '\n';
       continue;
     }
 
@@ -2064,7 +2049,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       agent_acc_cost += cur_cost;
       agent_acc_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeAccelerationAgent " << cur_cost<< '\n';
       continue;
     }
 
@@ -2072,7 +2056,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       agent_acc_holo_cost += cur_cost;
       agent_acc_holo_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeAccelerationHolonomicAgent " << cur_cost<< '\n';
       continue;
     }
 
@@ -2085,7 +2068,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
         obs_first = cur_cost;
         f5=true;
       }
-      // std::cout << "EdgeObstacle " << cur_cost<< '\n';
       continue;
     }
 
@@ -2093,7 +2075,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
     {
       cur_cost *= obst_cost_scale;
       cost_ += cur_cost;
-      // std::cout << "EdgeInflatedObstacle " << cur_cost<< '\n';
       continue;
     }
 
@@ -2102,7 +2083,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       dyn_obst_cost += cur_cost;
       dyn_obst_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeDynamicObstacle " << cur_cost<< '\n';
       continue;
     }
 
@@ -2111,7 +2091,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       via_cost += cur_cost;
       via_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeViaPoint " << cur_cost<< '\n';
       continue;
     }
 
@@ -2123,15 +2102,7 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
         safety_first = cur_cost;
         f1=true;
       }
-      // EdgeAgentRobotSafety *edge_agent_robot_safety = dynamic_cast<EdgeAgentRobotSafety *>(*it);
-      // const VertexPose *robot_bandpt = static_cast<const VertexPose *>(edge_agent_robot_safety->vertex(0));
-      // std::cout << "edge_agent_robot_safety->vertices() "<<robot_bandpt->pose()<< '\n';
-      // std::cout << "i " << i<< '\n';
-      // std::cout << "teb_.size() " <<teb_.sizePoses()<< '\n';
-      // std::cout << "teb_.Pose(0) "<<teb_.Pose(0) << '\n';
-      // std::cout << "teb_.Pose(1) "<<teb_.Pose(1) << '\n';
-      // std::cout << "teb_.Pose(2) "<<teb_.Pose(2) << '\n';
-      // std::cout << "EdgeAgentRobotSafety " << cur_cost<< '\n';
+
       continue;
     }
 
@@ -2139,7 +2110,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       hh_safety_cost += cur_cost;
       hh_safety_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
-      // std::cout << "EdgeAgentAgentSafety " << cur_cost<< '\n';
       continue;
     }
 
@@ -2148,7 +2118,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       hr_ttc_cost_vector.push_back(cur_cost);
 
       cost_ += cur_cost;
-      // std::cout << "EdgeAgentRobotTTC " << cur_cost<< '\n';
       if(!f2){
         ttc_first = cur_cost;
         f2=true;
@@ -2156,12 +2125,7 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       continue;
     }
 
-    // if (dynamic_cast<EdgeAgentRobotTTCplus *>(*it) != nullptr) {
-    //   hr_ttcplus_cost += cur_cost;
-    //   cost_ += cur_cost;
-    //   // std::cout << "EdgeAgentRobotTTCplus " << cur_cost<< '\n';
-    //   continue;
-    // }
+
 
     EdgeAgentRobotTTCplus *edge_agent_robot_ttcplus = dynamic_cast<EdgeAgentRobotTTCplus *>(*it);
     if (edge_agent_robot_ttcplus != NULL) {
@@ -2169,14 +2133,10 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       hr_ttcplus_cost += edge_agent_robot_ttcplus->getError().squaredNorm();
       ttcplus_error += edge_agent_robot_ttcplus->getError()[0];
       hr_ttcplus_cost_vector.push_back(edge_agent_robot_ttcplus->getError().squaredNorm());
-      // std::cout << "Entered here" << '\n';
       if(!f3){
         ttcplus_first = hr_ttcplus_cost;
         f3=true;
       }
-      // std::cout << "i " << i<< '\n';
-      // std::cout << "teb_.size() " <<teb_.sizePoses()<< '\n';
-      // std::cout << "EdgeAgentRobotTTCplus " << hr_ttcplus_cost<< '\n';
 
       continue;
     }
@@ -2192,7 +2152,6 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
         hr_visi_cost += cur_cost;
         hr_visi_cost_vector.push_back(cur_cost);
         cost_ += cur_cost;
-        // std::cout << "EdgeAgentRobotVisibility " << cur_cost<< '\n';
         if(!f4){
           visible_first = cur_cost;
           f4=true;
@@ -2200,29 +2159,11 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
         continue;
     }
 
-    // {std::cout << "i " << i<< '\n';
-      // std::cout << "hr_ttcplus_cost: " << hr_ttcplus_cost <<'\n';
-      // std::cout << "hr_safety_cost: " << hr_safety_cost <<'\n';
 
-    // }
-    // std::cout << "i " <<i << '\n';
   }
 
   if (op_costs) {
-    // std::cout << "I entered inside the op_costs" << '\n';
     op_costs->costs.clear();
-
-    // std::ofstream outdata;
-    // outdata.open("/home/ptsingaman/ros_ws/Navigation_planner_melodic/dir_data.dat");
-    // if( !outdata ){
-    //   ROS_INFO("Cannot open the file to write");
-    // }
-    //
-    // for(int indx=0;indx<hr_dir_cost_vector.size();indx++){
-    //   outdata << hr_dir_cost_vector[indx] << std::endl;
-    //   // std::cout << "dir_cost" << hr_dir_cost_vector[indx]<< '\n';
-    // }
-    // outdata.close();
 
     hateb_local_planner::OptimizationCost optc;
 
@@ -2509,14 +2450,12 @@ void TebOptimalPlanner::getFullAgentTrajectory(const uint64_t agent_id, std::vec
 
     // start
     TrajectoryPointMsg &start = agent_trajectory.front();
-    // std::cout << "Agent Teb Pose: 0\n" << start.pose.position << '\n';
     agent_teb.Pose(0).toPoseMsg(start.pose);
     start.velocity.linear.z = 0;
     start.velocity.angular.x = start.velocity.angular.y = 0;
     start.velocity.linear.x = agents_vel_start_[agent_id].second.linear.x;
     start.velocity.linear.y = agents_vel_start_[agent_id].second.linear.y;
     start.velocity.angular.z = agents_vel_start_[agent_id].second.angular.z;
-    // std::cout << "Agent Teb Pose: " << 0 << '\n' << start.velocity << '\n';
     start.time_from_start.fromSec(curr_time);
 
     curr_time += agent_teb.TimeDiff(0);
@@ -2525,7 +2464,6 @@ void TebOptimalPlanner::getFullAgentTrajectory(const uint64_t agent_id, std::vec
     for (int i = 1; i < agent_teb_size - 1; ++i) {
       TrajectoryPointMsg &point = agent_trajectory[i];
       agent_teb.Pose(i).toPoseMsg(point.pose);
-      // std::cout << "Agent Teb Pose: " << i << '\n' << point.pose.position << '\n';
       point.velocity.linear.z = 0;
       point.velocity.angular.x = point.velocity.angular.y = 0;
       double vel1_x, vel1_y, vel2_x, vel2_y, omega1, omega2;
@@ -2534,14 +2472,12 @@ void TebOptimalPlanner::getFullAgentTrajectory(const uint64_t agent_id, std::vec
       point.velocity.linear.x = 0.5*(vel1_x+vel2_x);
       point.velocity.linear.y = 0.5*(vel1_y+vel2_y);
       point.velocity.angular.z = 0.5 * (omega1 + omega2);
-      // std::cout << "Agent Teb Pose: " << i << '\n' << point.velocity << '\n';
       point.time_from_start.fromSec(curr_time);
 
       curr_time += agent_teb.TimeDiff(i);
     }
     // goal
     TrajectoryPointMsg &goal = agent_trajectory.back();
-    // std::cout << "Agent Teb Pose: end\n" << goal.pose.position << '\n';
 
     agent_teb.BackPose().toPoseMsg(goal.pose);
     goal.velocity.linear.z = 0;

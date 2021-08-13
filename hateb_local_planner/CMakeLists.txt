@@ -112,6 +112,7 @@ add_message_files(
   TrajectoryPointMsg.msg
   TrajectoryMsg.msg
   FeedbackMsg.msg
+  TransformedPlan.msg
 )
 
 # Generate services in the 'srv' folder

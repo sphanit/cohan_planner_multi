@@ -69,6 +69,7 @@
 #include <hateb_local_planner/Approach.h>
 #include <hateb_local_planner/setPlanning.h>
 #include <hateb_local_planner/getPlanning.h>
+#include <hateb_local_planner/TransformedPlan.h>
 
 // agent data
 #include <agent_path_prediction/AgentPosePredict.h>
@@ -595,7 +596,7 @@ private:
   ros::Subscriber agents_sub_;
 
   // Logs and agent states publishers
-  ros::Publisher log_pub_, agents_states_pub_;
+  ros::Publisher log_pub_, agents_states_pub_, transformed_global_plan_pub_;
 
   //Name space to support multiple agents
   std::string ns_;

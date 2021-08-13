@@ -240,6 +240,7 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     // robot_pose_pub_ = nh.advertise<geometry_msgs::Pose>(ROB_POS_TOPIC, 1);
     agents_states_pub_ = nh.advertise<cohan_msgs::StateArray>("agents_states",1);
     log_pub_ = nh.advertise<std_msgs::String>(HATEB_LOG,1);
+    transformed_global_plan_pub_ = nh.advertise<hateb_local_planner::TransformedPlan>("transfomed_global_plan",1);
 
     last_call_time_ = ros::Time::now() - ros::Duration(cfg_.hateb.pose_prediction_reset_time);
 
@@ -1047,6 +1048,12 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   //     dt_resize = 0.2;
   //     dt_hyst_resize = 0.1;
   //   }
+
+  // Publish the tranformed transformed global plan here
+  TransformedPlan pub_plan;
+  pub_plan.poses = transformed_plan;
+  transformed_global_plan_pub_.publish(pub_plan);
+
 
   bool success = planner_->plan(transformed_plan, &robot_vel_, cfg_.goal_tolerance.free_goal_vel, &transformed_agent_plan_vel_map, &op_costs, dt_resize, dt_hyst_resize);
 

@@ -36,11 +36,12 @@
  *********************************************************************/
 #include <hateb_local_planner/optimized_vel.h>
 #define GET_PLAN_SRV "/global_planner/planner/make_plan"
+// #define GET_PLAN_SRV "/move_base/GlobalPlanner/make_plan"
 #define OPTIMIZE_SRV "/local_planner/hateb_local_planner_test/optimize"
 #define AGENTS_SUB "/tracked_agents"
 // #define ROBOT_GOAL_SUB "robot_goal"
 #define DEFAULT_AGENT_PART cohan_msgs::TrackedSegmentType::TORSO
-
+#define EPS 1e-20
 
 namespace hateb_local_planner{
 OptimizedVel::OptimizedVel(tf2_ros::Buffer &tf2_) : initialized_(false), predict_behind_robot_(true), got_robot_plan(false),
@@ -102,6 +103,16 @@ void OptimizedVel::UpdateStartPoses(const cohan_msgs::TrackedAgents &tracked_age
   robot_start_pose.pose.orientation.w =  robot_to_map_tf.transform.rotation.w;
 }
 
+void OptimizedVel::correctPose(geometry_msgs::Pose &behind_pose){
+  behind_pose.position.x = (fabs(behind_pose.position.x) > EPS) ? behind_pose.position.x : 0.0;
+  behind_pose.position.y = (fabs(behind_pose.position.y) > EPS) ? behind_pose.position.y : 0.0;
+  behind_pose.position.z = (fabs(behind_pose.position.z) > EPS) ? behind_pose.position.z : 0.0;
+  behind_pose.orientation.x = 0.0;
+  behind_pose.orientation.y = 0.0;
+  behind_pose.orientation.z = (fabs(behind_pose.orientation.z) > EPS) ? behind_pose.orientation.z : 0.0;
+  behind_pose.orientation.w = (fabs(behind_pose.orientation.w) < 1.0) ? behind_pose.orientation.w : 0.0;
+}
+
 geometry_msgs::Twist OptimizedVel::OptimizeAndgetVel(const geometry_msgs::PoseStamped &robot_goal){
   robot_goal_= robot_goal;
   geometry_msgs::Twist cmd_vel_;
@@ -116,11 +127,18 @@ geometry_msgs::Twist OptimizedVel::OptimizeAndgetVel(const geometry_msgs::PoseSt
   robot_plan_srv.request.start = robot_start_pose;
   robot_plan_srv.request.goal = robot_goal_;
   if(getPlan_client.call(robot_plan_srv)){
+    std::cout << "robot_plan_srv.response.plan.poses.size()" << robot_plan_srv.response.plan.poses.size() << '\n';
     if(robot_plan_srv.response.plan.poses.size()>0)
       got_robot_plan = true;
     else
       got_robot_plan = false;
   }
+  else{
+    ROS_ERROR_NAMED("Optimed_Vel", "Cannot subscribe to the service %s", GET_PLAN_SRV);
+    cmd_vel_.linear.z =  -100;
+    return cmd_vel_;
+  }
+
 
   int idx = 0;
   for(auto &agent : tracked_agents_.agents){
@@ -132,12 +150,12 @@ geometry_msgs::Twist OptimizedVel::OptimizeAndgetVel(const geometry_msgs::PoseSt
         behind_tr = robot_to_map_tf_ * behind_tr;
         geometry_msgs::Pose behind_pose;
         tf2::toMsg(behind_tr, behind_pose);
+        correctPose(behind_pose);
 
         geometry_msgs::PoseStamped agent_goal;
         agent_goal.header.frame_id = "map";
         agent_goal.header.stamp = now;
         agent_goal.pose = behind_pose;
-
         agents_goals_.push_back(agent_goal);
 
         agent_plan_srv.request.start = agents_start_poses[idx];
@@ -191,8 +209,13 @@ bool OptimizedVel::get_vel_srv(hateb_local_planner::getOptimVel::Request &req, h
   auto cmd_vel_ = OptimizeAndgetVel(req.robot_goal);
 
   res.success = true;
-  res.message = "Got optim vel";
-  res.cmd_vel = cmd_vel_;
+  if(cmd_vel_.linear.z == 0){
+    res.message = "Got optim vel";
+    res.cmd_vel = cmd_vel_;
+  }
+  else{
+    res.message = "Failed to get velocity !";
+  }
 
   return true;
 }

@@ -69,6 +69,7 @@ namespace hateb_local_planner{
      void initialize();
      void UpdateStartPoses(const cohan_msgs::TrackedAgents &tracked_agents);
      void correctPose(geometry_msgs::Pose &behind_pose);
+     bool checkGoal(geometry_msgs::PoseStamped goal);
      geometry_msgs::Twist OptimizeAndgetVel(const geometry_msgs::PoseStamped &robot_goal);
      bool get_vel_srv(hateb_local_planner::getOptimVel::Request &req, hateb_local_planner::getOptimVel::Response &res);
 

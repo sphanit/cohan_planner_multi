@@ -113,9 +113,24 @@ void OptimizedVel::correctPose(geometry_msgs::Pose &behind_pose){
   behind_pose.orientation.w = (fabs(behind_pose.orientation.w) < 1.0) ? behind_pose.orientation.w : 0.0;
 }
 
+
+bool OptimizedVel::checkGoal(geometry_msgs::PoseStamped goal){
+  if(goal.header.frame_id == "")
+    return false;
+  else if(goal.pose.orientation.w == 0.0)
+    return false;
+  else
+    return true;
+}
+
 geometry_msgs::Twist OptimizedVel::OptimizeAndgetVel(const geometry_msgs::PoseStamped &robot_goal){
   robot_goal_= robot_goal;
   geometry_msgs::Twist cmd_vel_;
+
+  if(!checkGoal(robot_goal_)){
+    cmd_vel_.linear.z =  -100;
+    return cmd_vel_;
+  }
 
   auto now = ros::Time::now();
   nav_msgs::GetPlan agent_plan_srv, robot_plan_srv;
@@ -127,7 +142,6 @@ geometry_msgs::Twist OptimizedVel::OptimizeAndgetVel(const geometry_msgs::PoseSt
   robot_plan_srv.request.start = robot_start_pose;
   robot_plan_srv.request.goal = robot_goal_;
   if(getPlan_client.call(robot_plan_srv)){
-    std::cout << "robot_plan_srv.response.plan.poses.size()" << robot_plan_srv.response.plan.poses.size() << '\n';
     if(robot_plan_srv.response.plan.poses.size()>0)
       got_robot_plan = true;
     else
@@ -208,12 +222,13 @@ bool OptimizedVel::get_vel_srv(hateb_local_planner::getOptimVel::Request &req, h
 
   auto cmd_vel_ = OptimizeAndgetVel(req.robot_goal);
 
-  res.success = true;
   if(cmd_vel_.linear.z == 0){
+    res.success = true;
     res.message = "Got optim vel";
     res.cmd_vel = cmd_vel_;
   }
   else{
+    res.success = false;
     res.message = "Failed to get velocity !";
   }
 

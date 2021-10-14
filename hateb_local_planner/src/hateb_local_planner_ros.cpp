@@ -1177,6 +1177,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   // store last command (for recovery analysis etc.)
   last_cmd_ = cmd_vel.twist;
 
+  std::cout << "cmd_vel.twist " <<cmd_vel.twist<< '\n';
+
   // Now visualize everything
   auto viz_start_time = ros::Time::now();
   planner_->visualize();
@@ -2454,11 +2456,21 @@ bool HATebLocalPlannerROS::optimizeStandalone(
   // now perform the actual planning
   auto plan_start_time = ros::Time::now();
   geometry_msgs::Twist robot_vel_twist;
+  geometry_msgs::PoseStamped robot_vel_tf;
+  odom_helper_.getRobotVel(robot_vel_tf);
+  robot_vel_.linear.x = robot_vel_tf.pose.position.x;
+  robot_vel_.linear.y = robot_vel_tf.pose.position.y;
+  robot_vel_.angular.z = tf2::getYaw(robot_vel_tf.pose.orientation);
   hateb_local_planner::OptimizationCostArray op_costs;
+
+  std::cout << "robot_vel_" << robot_vel_ << '\n';
+
+  double dt_resize=cfg_.trajectory.dt_ref;
+  double dt_hyst_resize=cfg_.trajectory.dt_hysteresis;
 
   bool success = planner_->plan(transformed_plan, &robot_vel_,
                                 cfg_.goal_tolerance.free_goal_vel,
-                                &transformed_agent_plan_vel_map,&op_costs);
+                                &transformed_agent_plan_vel_map,&op_costs, dt_resize, dt_hyst_resize);
   if (!success) {
     planner_->clearPlanner();
     res.success = false;
@@ -2516,7 +2528,6 @@ bool HATebLocalPlannerROS::optimizeStandalone(
 
   // get the velocity command for this sampling interval
   auto vel_start_time = ros::Time::now();
-  double dt_resize = 0.4;
   if (!planner_->getVelocityCommand(cmd_vel.linear.x, cmd_vel.linear.y, cmd_vel.angular.z, cfg_.trajectory.control_look_ahead_poses, dt_resize)) {
     res.message += feasible ? "\nhowever," : "\nand";
     res.message += " velocity command is invalid";

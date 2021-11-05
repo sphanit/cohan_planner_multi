@@ -1177,8 +1177,6 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   // store last command (for recovery analysis etc.)
   last_cmd_ = cmd_vel.twist;
 
-  std::cout << "cmd_vel.twist " <<cmd_vel.twist<< '\n';
-
   // Now visualize everything
   auto viz_start_time = ros::Time::now();
   planner_->visualize();
@@ -2462,8 +2460,6 @@ bool HATebLocalPlannerROS::optimizeStandalone(
   robot_vel_.linear.y = robot_vel_tf.pose.position.y;
   robot_vel_.angular.z = tf2::getYaw(robot_vel_tf.pose.orientation);
   hateb_local_planner::OptimizationCostArray op_costs;
-
-  std::cout << "robot_vel_" << robot_vel_ << '\n';
 
   double dt_resize=cfg_.trajectory.dt_ref;
   double dt_hyst_resize=cfg_.trajectory.dt_hysteresis;

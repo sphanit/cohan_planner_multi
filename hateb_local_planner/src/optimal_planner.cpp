@@ -1207,6 +1207,7 @@ void TebOptimalPlanner::AddEdgesVelocity()
         velocity_edge->setVertex(2,teb_.TimeDiffVertex(i));
         velocity_edge->setVertex(3, agent_teb.PoseVertex(j));
         velocity_edge->setInformation(information);
+        //TODO: Check this and update code
         if(i<agent_teb.sizePoses())
           velocity_edge->setParameters(*cfg_, robot_model_.get(), agent_radius_);
         else
@@ -1240,6 +1241,7 @@ void TebOptimalPlanner::AddEdgesVelocity()
         velocity_edge->setVertex(2,teb_.TimeDiffVertex(i));
         velocity_edge->setVertex(3, agent_teb.PoseVertex(j));
         velocity_edge->setInformation(information);
+        //TODO: Check this and update code
         if(i<agent_teb.sizePoses())
           velocity_edge->setParameters(*cfg_, robot_model_.get(), agent_radius_);
         else

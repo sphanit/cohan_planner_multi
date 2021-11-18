@@ -6,19 +6,19 @@ import rospy
 import sys
 import numpy as np
 import tf2_ros
+import math
 import tf2_geometry_msgs
 from sensor_msgs.msg import LaserScan
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import TransformStamped, PoseStamped
 import matplotlib.pyplot as plt
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, OccupancyGrid
+from utils import worldTomap, getIndex
 
 
 class LaserContour(object):
   def __init__(self):
     rospy.init_node('laser_coutour')
-    rospy.Subscriber('base_scan_filtered', LaserScan, self.laserCB)
-    rospy.Subscriber('base_pose_ground_truth', Odometry, self.odomCB)
 
     self.x = []
     self.y = []
@@ -31,6 +31,12 @@ class LaserContour(object):
     self.saved = False
     self.got_robot_pose = False
     self.drawing = False
+    self.info = []
+    self.map = []
+
+    rospy.Subscriber('base_scan_filtered', LaserScan, self.laserCB)
+    rospy.Subscriber('base_pose_ground_truth', Odometry, self.odomCB)
+    rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, self.mapCB)
 
     #Intialize tf2 transform listener
     self.tf = tf2_ros.Buffer()
@@ -74,24 +80,50 @@ class LaserContour(object):
         self.x[len(self.x):] = [scan.ranges[i]*np.cos(angle)]
         self.y[len(self.y):] = [scan.ranges[i]*np.sin(angle)]
 
+        if len(self.map) > 1 and self.got_robot_pose:
+          value = scan.ranges[i]
+          if math.isnan(value):
+            value = 7.0
+          mx, my = worldTomap(value*np.cos(angle), value*np.sin(angle), self.info, self.r_pose)
+          m_idx = getIndex(mx, my, self.info)
+          print(self.map[m_idx])
+
       self.saved = True
     # data_x = np.asarray(self.x)
     # data_y = np.asarray(self.y)
     # np.savetxt("x_data"+str(self.data_counter)+".csv", data_x, delimiter=",")
     # np.savetxt("y_data"+str(self.data_counter)+".csv", data_y, delimiter=",")
 
+
+  # The robot position is same irrespective of the map position as the laser is with respect to laser frame
+  # Hence you can remove this function and use the fixed cordinates for the robot
+  #   position:
+  #   x: -0.275
+  #   y: -0.055
+  #   z: -0.1
+  # orientation:
+  #   x: 0.0
+  #   y: 0.0
+  #   z: 0.0
+  #   w: 1.0
+
   def odomCB(self, msg):
     self.got_robot_pose = False
     try:
       laser_transform = self.tf.lookup_transform("base_laser_link", "map", rospy.Time(),rospy.Duration(0.0001))
       p1 = tf2_geometry_msgs.do_transform_pose(msg.pose, laser_transform)
-      self.r_pose = [p1.pose.position.x, p1.pose.position.y]
+      self.r_pose = [msg.pose.pose.position.x, msg.pose.pose.position.y]
+      print(p1)
       rot = p1.pose.orientation
       r,p,y = euler_from_quaternion([rot.x, rot.y, rot.z, rot.w])
       self.r_dx = [np.cos(y), np.sin(y)]
       self.got_robot_pose = True
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
       pass
+
+  def mapCB(self, map):
+    self.info = map.info
+    self.map = map.data
 
   def save_contours(self, event):
     self.drawing = True
@@ -101,9 +133,9 @@ class LaserContour(object):
         plt.plot(self.x, self.y)
         plt.plot(self.x_vis, self.y_vis, 'r')
         plt.plot(self.corners[0],self.corners[1], 'yo')
-        plt.arrow(self.r_pose[0],self.r_pose[1],self.r_dx[0],self.r_dx[1], length_includes_head=True,
-            head_width=0.2, head_length=0.2)
-        plt.plot(self.r_pose[0],self.r_pose[1],'ro')
+        # plt.arrow(self.r_pose[0],self.r_pose[1],self.r_dx[0],self.r_dx[1], length_includes_head=True,
+            # head_width=0.2, head_length=0.2)
+        # plt.plot(self.r_pose[0],self.r_pose[1],'ro')
         # plt.axis('scaled')
         plt.title("Laser Contour")
         plt.xlabel("x (m)")

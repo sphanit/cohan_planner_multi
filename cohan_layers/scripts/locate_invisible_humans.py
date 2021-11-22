@@ -8,16 +8,18 @@ import tf2_ros
 import math
 import tf2_geometry_msgs
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import PoseStamped, Point
+from geometry_msgs.msg import PoseStamped, Point, Point32, QuaternionStamped, Quaternion
 from cohan_msgs.msg import PointArray
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import OccupancyGrid
+from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
+from tf.transformations import quaternion_from_euler
 from utils import *
 
 
-class LaserContour(object):
+class InvisibleHumans(object):
   def __init__(self):
-    rospy.init_node('laser_coutour')
+    rospy.init_node('invisible_humans_node')
 
     self.x = []
     self.y = []
@@ -33,7 +35,9 @@ class LaserContour(object):
     rospy.Subscriber('base_scan_filtered', LaserScan, self.laserCB)
     rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, self.mapCB)
     self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 10)
-    self.pub_invis_human = rospy.Publisher('invisible_humans', PointArray, queue_size = 10)
+    # self.pub_invis_human = rospy.Publisher('invisible_humans', PointArray, queue_size = 10)
+    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/obstacles', ObstacleArrayMsg, queue_size=1000)
+
 
     #Intialize tf2 transform listener
     self.tf = tf2_ros.Buffer()
@@ -88,6 +92,36 @@ class LaserContour(object):
     self.info = map.info
     self.map = map.data
 
+  def publish_to_cohan_obstacles(self, humans):
+
+    obstacle_msg = ObstacleArrayMsg()
+    obstacle_msg.header.stamp = rospy.Time.now()
+    obstacle_msg.header.frame_id = "odom" # CHANGE HERE: odom/map
+
+    for i in range(0,len(humans)):
+      # Add point obstacle
+      # print(humans[i][0])
+      obstacle_msg.obstacles.append(ObstacleMsg())
+      obstacle_msg.obstacles[i].radius = 0.3
+      obstacle_msg.obstacles[i].id = i
+      obstacle_msg.obstacles[i].polygon.points = [Point32()]
+      obstacle_msg.obstacles[i].polygon.points[0].x = humans[i][0]
+      obstacle_msg.obstacles[i].polygon.points[0].y = humans[i][1]
+      obstacle_msg.obstacles[i].polygon.points[0].z = 0
+
+      yaw = math.atan2(humans[i][3], humans[i][2])
+      q = quaternion_from_euler(0,0,yaw)
+      obstacle_msg.obstacles[i].orientation = Quaternion(*q)
+
+      obstacle_msg.obstacles[i].velocities.twist.linear.x = humans[i][2]
+      obstacle_msg.obstacles[i].velocities.twist.linear.y = humans[i][3]
+      obstacle_msg.obstacles[i].velocities.twist.linear.z = 0
+      obstacle_msg.obstacles[i].velocities.twist.angular.x = 0
+      obstacle_msg.obstacles[i].velocities.twist.angular.y = 0
+      obstacle_msg.obstacles[i].velocities.twist.angular.z = 0
+    self.pub_invis_human.publish(obstacle_msg)
+
+
   def locate_humans(self):
     # The robot position is same irrespective of the map position as the laser is with respect to laser frame
     # Hence you can use the fixed cordinates for the robot
@@ -104,8 +138,9 @@ class LaserContour(object):
     self.centers = [[],[]]
     center_points = []
     marker_array = MarkerArray()
-    inv_humans = PointArray()
-    inv_humans.header.frame_id = "map"
+    # inv_humans = PointArray()
+    # inv_humans.header.frame_id = "map"
+    inv_humans = []
     if len(self.map) > 1 and len(self.corners[0])>0:
       for i in range(0,len(self.corners[0])):
         x = self.corners[0][i]
@@ -130,7 +165,7 @@ class LaserContour(object):
         yt = y
         alp = 0.1
         center = [0,0]
-        hum_rad = 0.1
+        hum_rad = 0.3
         while(True):
           if(l_or_r == 1):
             pt = getLeftPoint([x,y],[x1,y1],[xt,yt],dist = hum_rad)
@@ -142,6 +177,7 @@ class LaserContour(object):
           in_pose_l = PoseStamped()
           in_pose_r = PoseStamped()
           in_pose_temp = PoseStamped()
+
           in_pose_l.pose.position.x = l_pt[0]
           in_pose_l.pose.position.y = l_pt[1]
           in_pose_l.pose.orientation.w = 1
@@ -151,10 +187,17 @@ class LaserContour(object):
           in_pose_temp.pose.position.x = center[0]
           in_pose_temp.pose.position.y = center[1]
           in_pose_temp.pose.orientation.w = 1
+
+          robot_pose = PoseStamped()
+          robot_pose.pose.position.x = -0.275
+          robot_pose.pose.position.y = -0.055
+          robot_pose.pose.orientation.w = 1
+
           point_transform = self.tf.lookup_transform("odom", "base_laser_link", rospy.Time(),rospy.Duration(0.001))
           p1 = tf2_geometry_msgs.do_transform_pose(in_pose_l, point_transform)
           p2 = tf2_geometry_msgs.do_transform_pose(in_pose_r, point_transform)
           p3 = tf2_geometry_msgs.do_transform_pose(in_pose_temp, point_transform)
+          p4 = tf2_geometry_msgs.do_transform_pose(robot_pose, point_transform)
           mx_l, my_l = worldTomap(p1.pose.position.x,p1.pose.position.y, self.info)
           mx_r, my_r = worldTomap(p2.pose.position.x,p2.pose.position.y, self.info)
           mx_c, my_c = worldTomap(p3.pose.position.x,p3.pose.position.y, self.info)
@@ -165,7 +208,7 @@ class LaserContour(object):
           xt = xt + alp*ux
           yt = yt + alp*uy
 
-          if m_idx_c > len(self.map) - 1 or m_idx_l > len(self.map) - 1 or m_idx_r > len(self.map) - 1:
+          if m_idx_c > (len(self.map) - 1) or m_idx_l > (len(self.map) - 1) or m_idx_r > (len(self.map) - 1):
             continue
 
           if (self.map[m_idx_l] == 0 and self.map[m_idx_r] == 0 and self.map[m_idx_c] == 0) or abs(xt)>=abs(x1) or abs(yt)>=abs(y1):
@@ -174,11 +217,17 @@ class LaserContour(object):
         self.centers[0][len(self.centers[0]):] = [center[0]]
         self.centers[1][len(self.centers[1]):] = [center[1]]
 
-        c_point = Point()
-        c_point.x = p3.pose.position.x
-        c_point.y = p3.pose.position.y + 0.055
-        c_point.z = 0.0
-        inv_humans.points.append(c_point)
+        vel_ux = p4.pose.position.x - p3.pose.position.x
+        vel_uy = p4.pose.position.y - p3.pose.position.y
+        vec_ang = math.atan2(vel_uy, vel_ux)
+
+        inv_humans.append([p3.pose.position.x, p3.pose.position.y, 1.3*math.cos(vec_ang), 1.3*math.sin(vec_ang)])
+
+        # c_point = Point()
+        # c_point.x = p3.pose.position.x
+        # c_point.y = p3.pose.position.y + 0.055
+        # c_point.z = 0.0
+        # inv_humans.points.append(c_point)
 
         marker = Marker()
         marker.header.frame_id = "map"
@@ -198,10 +247,11 @@ class LaserContour(object):
         marker.color.r = 1.0
         marker_array.markers.append(marker)
       self.pub_invis_human_viz.publish(marker_array)
-      self.pub_invis_human.publish(inv_humans)
+      self.publish_to_cohan_obstacles(inv_humans)
+      # self.pub_invis_human.publish(inv_humans)
     self.locating = False
 
 
 
 if __name__ == '__main__':
-  cont = LaserContour()
+  cont = InvisibleHumans()

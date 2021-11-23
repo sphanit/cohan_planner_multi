@@ -28,7 +28,6 @@ class InvisibleHumans(object):
     self.corners = [[],[]]
     self.rays = [[],[]]
     self.centers = [[],[]]
-    self.locating = False
     self.info = []
     self.map = []
 
@@ -36,7 +35,7 @@ class InvisibleHumans(object):
     rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, self.mapCB)
     self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 10)
     # self.pub_invis_human = rospy.Publisher('invisible_humans', PointArray, queue_size = 10)
-    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/obstacles', ObstacleArrayMsg, queue_size=1000)
+    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/obstacles', ObstacleArrayMsg, queue_size=100)
 
 
     #Intialize tf2 transform listener
@@ -51,41 +50,40 @@ class InvisibleHumans(object):
   def laserCB(self, scan):
     self.saved = False
     prev_point = [0.0,0.0]
-    if not self.locating:
-      self.x = []
-      self.y = []
-      self.x_vis = []
-      self.y_vis = []
-      self.corners = [[],[]]
-      self.rays = [[],[]]
-      for i in range(0,len(scan.ranges)):
-        angle = scan.angle_min + (i * scan.angle_increment)
-        if abs(angle) < 1.2:
-          self.x_vis[len(self.x_vis):] = [scan.ranges[i]*np.cos(angle)]
-          self.y_vis[len(self.y_vis):] = [scan.ranges[i]*np.sin(angle)]
-          idx = len(self.x_vis) - 1
-          if(idx>0):
-            dist = np.linalg.norm([prev_point[0]-self.x_vis[idx], prev_point[1]-self.y_vis[idx]])
-            check = (abs(prev_point[0]-self.x_vis[idx]) >= 0.5 or abs(prev_point[1]-self.y_vis[idx]) >= 0.5)
-            under_rad = min(np.linalg.norm([self.x_vis[idx], self.y_vis[idx]]), np.linalg.norm([prev_point[0], prev_point[1]]))
-            if(dist>0.15 and under_rad<=5.0 and check):
-              if(np.linalg.norm([prev_point[0], prev_point[1]]) < np.linalg.norm([self.x_vis[idx], self.y_vis[idx]])):
-                self.corners[0][len(self.corners[0]):] = [prev_point[0]]
-                self.corners[1][len(self.corners[1]):] = [prev_point[1]]
-                self.rays[0][len(self.rays[0]):] = [self.x_vis[idx]]
-                self.rays[1][len(self.rays[1]):] = [self.y_vis[idx]]
-              else:
-                self.corners[0][len(self.corners[0]):] = [self.x_vis[idx]]
-                self.corners[1][len(self.corners[1]):] = [self.y_vis[idx]]
-                self.rays[0][len(self.rays[0]):] = [prev_point[0]]
-                self.rays[1][len(self.rays[1]):] = [prev_point[1]]
+    self.x = []
+    self.y = []
+    self.x_vis = []
+    self.y_vis = []
+    self.corners = [[],[]]
+    self.rays = [[],[]]
+    for i in range(0,len(scan.ranges)):
+      angle = scan.angle_min + (i * scan.angle_increment)
+      if abs(angle) < 1.2:
+        self.x_vis[len(self.x_vis):] = [scan.ranges[i]*np.cos(angle)]
+        self.y_vis[len(self.y_vis):] = [scan.ranges[i]*np.sin(angle)]
+        idx = len(self.x_vis) - 1
+        if(idx>0):
+          dist = np.linalg.norm([prev_point[0]-self.x_vis[idx], prev_point[1]-self.y_vis[idx]])
+          check = (abs(prev_point[0]-self.x_vis[idx]) >= 0.5 or abs(prev_point[1]-self.y_vis[idx]) >= 0.5)
+          under_rad = min(np.linalg.norm([self.x_vis[idx], self.y_vis[idx]]), np.linalg.norm([prev_point[0], prev_point[1]]))
+          if(dist>0.15 and under_rad<=5.0 and check):
+            if(np.linalg.norm([prev_point[0], prev_point[1]]) < np.linalg.norm([self.x_vis[idx], self.y_vis[idx]])):
+              self.corners[0][len(self.corners[0]):] = [prev_point[0]]
+              self.corners[1][len(self.corners[1]):] = [prev_point[1]]
+              self.rays[0][len(self.rays[0]):] = [self.x_vis[idx]]
+              self.rays[1][len(self.rays[1]):] = [self.y_vis[idx]]
+            else:
+              self.corners[0][len(self.corners[0]):] = [self.x_vis[idx]]
+              self.corners[1][len(self.corners[1]):] = [self.y_vis[idx]]
+              self.rays[0][len(self.rays[0]):] = [prev_point[0]]
+              self.rays[1][len(self.rays[1]):] = [prev_point[1]]
 
-          prev_point = [self.x_vis[idx], self.y_vis[idx]]
+        prev_point = [self.x_vis[idx], self.y_vis[idx]]
 
-        self.x[len(self.x):] = [scan.ranges[i]*np.cos(angle)]
-        self.y[len(self.y):] = [scan.ranges[i]*np.sin(angle)]
-      self.locate_humans()
-      self.saved = True
+      self.x[len(self.x):] = [scan.ranges[i]*np.cos(angle)]
+      self.y[len(self.y):] = [scan.ranges[i]*np.sin(angle)]
+    self.saved = True
+    self.locate_humans()
 
 
   def mapCB(self, map):
@@ -123,6 +121,7 @@ class InvisibleHumans(object):
 
 
   def locate_humans(self):
+    # print("locating")
     # The robot position is same irrespective of the map position as the laser is with respect to laser frame
     # Hence you can use the fixed cordinates for the robot
     #   position:
@@ -134,13 +133,13 @@ class InvisibleHumans(object):
     #   y: 0.0
     #   z: 0.0
     #   w: 1.0
-    self.locating = True
     self.centers = [[],[]]
     center_points = []
     marker_array = MarkerArray()
     # inv_humans = PointArray()
     # inv_humans.header.frame_id = "map"
     inv_humans = []
+    m_id = 0
     if len(self.map) > 1 and len(self.corners[0])>0:
       for i in range(0,len(self.corners[0])):
         x = self.corners[0][i]
@@ -208,10 +207,13 @@ class InvisibleHumans(object):
           xt = xt + alp*ux
           yt = yt + alp*uy
 
+          if (np.linalg.norm([xt-x,yt-y])>=np.linalg.norm([x1-x,y1-y])) or (np.linalg.norm([xt,yt])>=7.0):
+            break
+
           if m_idx_c > (len(self.map) - 1) or m_idx_l > (len(self.map) - 1) or m_idx_r > (len(self.map) - 1):
             continue
 
-          if (self.map[m_idx_l] == 0 and self.map[m_idx_r] == 0 and self.map[m_idx_c] == 0) or abs(xt)>=abs(x1) or abs(yt)>=abs(y1):
+          if (self.map[m_idx_l] == 0 and self.map[m_idx_r] == 0 and self.map[m_idx_c] == 0):
             break
 
         self.centers[0][len(self.centers[0]):] = [center[0]]
@@ -221,7 +223,7 @@ class InvisibleHumans(object):
         vel_uy = p4.pose.position.y - p3.pose.position.y
         vec_ang = math.atan2(vel_uy, vel_ux)
 
-        inv_humans.append([p3.pose.position.x, p3.pose.position.y, 1.3*math.cos(vec_ang), 1.3*math.sin(vec_ang)])
+        inv_humans.append([p3.pose.position.x, p3.pose.position.y, 1.5*math.cos(vec_ang), 1.5*math.sin(vec_ang)])
 
         # c_point = Point()
         # c_point.x = p3.pose.position.x
@@ -229,9 +231,32 @@ class InvisibleHumans(object):
         # c_point.z = 0.0
         # inv_humans.points.append(c_point)
 
+
+        yaw = math.atan2(1.5*math.sin(vec_ang), 1.5*math.cos(vec_ang))
+        q = quaternion_from_euler(0,0,yaw)
+
+        arrow = Marker()
+        arrow.header.frame_id = "map"
+        arrow.id = m_id
+        arrow.type = arrow.ARROW
+        arrow.action = arrow.ADD
+        arrow.pose.orientation = Quaternion(*q)
+        arrow.pose.position.x = p3.pose.position.x
+        arrow.pose.position.y = p3.pose.position.y + 0.055
+        arrow.pose.position.z = 0.0
+        t = rospy.Duration(0.1)
+        arrow.lifetime = t
+        arrow.scale.x = 0.6
+        arrow.scale.y = 0.1
+        arrow.scale.z = 0.1
+        arrow.color.a = 1.0
+        arrow.color.b = 1.0
+
+        m_id += 1
+
         marker = Marker()
         marker.header.frame_id = "map"
-        marker.id = i
+        marker.id = m_id
         marker.type = marker.CYLINDER
         marker.action = marker.ADD
         marker.pose.orientation.w = 1
@@ -245,11 +270,14 @@ class InvisibleHumans(object):
         marker.scale.z = 1.2
         marker.color.a = 1.0
         marker.color.r = 1.0
+
+        m_id += 1
+
         marker_array.markers.append(marker)
+        marker_array.markers.append(arrow)
       self.pub_invis_human_viz.publish(marker_array)
       self.publish_to_cohan_obstacles(inv_humans)
       # self.pub_invis_human.publish(inv_humans)
-    self.locating = False
 
 
 

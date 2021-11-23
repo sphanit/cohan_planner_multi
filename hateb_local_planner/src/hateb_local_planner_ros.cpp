@@ -591,6 +591,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   robot_pose_ = PoseSE2(robot_pose.pose);
   robot_pose_.toPoseMsg(robot_pos_msg);
   // robot_pose_pub_.publish(robot_pos_msg);
+  // logs+="position: x= " + std::to_string(robot_pose.pose.position.x) +", " + " y= " + std::to_string(robot_pose.pose.position.y)+", ";
+  logs+=std::to_string(robot_pose.pose.position.x) +", " + std::to_string(robot_pose.pose.position.y);
   if(std::hypot(robot_pose.pose.position.x-last_robot_pose.position.x, robot_pose.pose.position.y-last_robot_pose.position.y)>0.06){
     last_position_time = ros::Time::now();
   }
@@ -631,8 +633,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   robot_vel_.linear.y = robot_vel_tf.pose.position.y;
   robot_vel_.angular.z = tf2::getYaw(robot_vel_tf.pose.orientation);
   auto vel_get_time = ros::Time::now() - vel_get_start_time;
-  logs+="Velocity: x= " + std::to_string(robot_vel_.linear.x) +", " + " y= " + std::to_string(robot_vel_.linear.y)+", ";
-  logs+="dist " + std::to_string(current_agent_dist)+", ";
+  // logs+="velocity: x= " + std::to_string(robot_vel_.linear.x) +", " + " y= " + std::to_string(robot_vel_.linear.y)+", ";
+  // logs+="dist " + std::to_string(current_agent_dist)+", ";
 
   // prune global plan to cut off parts of the past (spatially before the robot)
   auto prune_start_time = ros::Time::now();
@@ -1027,7 +1029,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   else if(isMode == 2){
     mode = "Backoff";
   }
-  logs+="Mode: " + mode+", ";
+  // logs+="Mode: " + mode+", ";
 
   std_msgs::String log_msg;
   log_msg.data = logs;

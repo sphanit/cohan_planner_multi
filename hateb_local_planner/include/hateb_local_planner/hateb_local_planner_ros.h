@@ -286,6 +286,9 @@ protected:
    */
   void updateObstacleContainerWithCustomObstacles();
 
+  // For invisible humans
+  void updateObstacleContainerWithInvHumans();
+
 
   /**
    * @brief Update internal via-point container based on the current reference plan
@@ -314,6 +317,9 @@ protected:
    * obstacles
    */
   void customObstacleCB(const costmap_converter::ObstacleArrayMsg::ConstPtr& obst_msg);
+
+  // For invisible humans
+  void InvHumansCB(const costmap_converter::ObstacleArrayMsg::ConstPtr& obst_msg);
 
    /**
     * @brief Callback for custom via-points
@@ -518,9 +524,9 @@ private:
   boost::shared_ptr<costmap_converter::BaseCostmapToPolygons> costmap_converter_; //!< Store the current costmap_converter
 
   boost::shared_ptr< dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig> > dynamic_recfg_; //!< Dynamic reconfigure server to allow config modifications at runtime
-  ros::Subscriber custom_obst_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
-  boost::mutex custom_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
-  costmap_converter::ObstacleArrayMsg custom_obstacle_msg_; //!< Copy of the most recent obstacle message
+  ros::Subscriber custom_obst_sub_, inv_humans_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
+  boost::mutex custom_obst_mutex_, inv_human_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
+  costmap_converter::ObstacleArrayMsg custom_obstacle_msg_, inv_humans_msg_; //!< Copy of the most recent obstacle message
 
   ros::Subscriber via_points_sub_; //!< Subscriber for custom via-points received via a Path msg.
   bool custom_via_points_active_; //!< Keep track whether valid via-points have been received from via_points_sub_

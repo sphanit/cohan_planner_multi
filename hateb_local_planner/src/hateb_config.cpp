@@ -212,6 +212,8 @@ void HATebConfig::loadRosParamFromNodeHandle(const ros::NodeHandle& nh)
            hateb.scale_agent_robot_ttcplus_c);
   nh.param("use_agent_robot_rel_vel_c", hateb.use_agent_robot_rel_vel_c,
            hateb.use_agent_robot_rel_vel_c);
+  nh.param("add_invisible_humans", hateb.add_invisible_humans,
+           hateb.add_invisible_humans);
   nh.param("use_agent_robot_visi_c", hateb.use_agent_robot_visi_c,
            hateb.use_agent_robot_visi_c);
   nh.param("use_agent_elastic_vel", hateb.use_agent_elastic_vel,
@@ -230,6 +232,7 @@ void HATebConfig::loadRosParamFromNodeHandle(const ros::NodeHandle& nh)
   nh.param("agent_pose_prediction_reset_time", hateb.pose_prediction_reset_time,
             hateb.pose_prediction_reset_time);
   nh.param("rel_vel_cost_threshold", hateb.rel_vel_cost_threshold, hateb.rel_vel_cost_threshold);
+  nh.param("invisible_human_threshold", hateb.invisible_human_threshold, hateb.invisible_human_threshold);
   nh.param("ttcplus_threshold", hateb.ttcplus_threshold, hateb.ttcplus_threshold);
   nh.param("ttcplus_timer", hateb.ttcplus_timer, hateb.ttcplus_timer);
 
@@ -415,6 +418,7 @@ void HATebConfig::reconfigure(HATebLocalPlannerReconfigureConfig& cfg)
   optim.weight_agent_robot_ttc = cfg.weight_agent_robot_ttc;
   optim.weight_agent_robot_ttcplus = cfg.weight_agent_robot_ttcplus;
   optim.weight_agent_robot_rel_vel = cfg.weight_agent_robot_rel_vel;
+  optim.weight_invisible_human = cfg.weight_invisible_human;
   optim.weight_agent_robot_visibility = cfg.weight_agent_robot_visibility;
   optim.agent_robot_ttc_scale_alpha = cfg.agent_robot_ttc_scale_alpha;
   optim.agent_robot_ttcplus_scale_alpha = cfg.agent_robot_ttcplus_scale_alpha;
@@ -430,6 +434,7 @@ void HATebConfig::reconfigure(HATebLocalPlannerReconfigureConfig& cfg)
   hateb.scale_agent_robot_ttc_c = cfg.scale_agent_robot_ttc_c;
   hateb.scale_agent_robot_ttcplus_c = cfg.scale_agent_robot_ttcplus_c;
   hateb.use_agent_robot_rel_vel_c = cfg.use_agent_robot_rel_vel_c;
+  hateb.add_invisible_humans = cfg.add_invisible_humans;
   hateb.use_agent_robot_visi_c = cfg.use_agent_robot_visi_c;
   hateb.use_agent_elastic_vel = cfg.use_agent_elastic_vel;
   hateb.use_external_prediction = cfg.use_external_prediction;
@@ -441,6 +446,7 @@ void HATebConfig::reconfigure(HATebLocalPlannerReconfigureConfig& cfg)
   hateb.ttcplus_threshold = cfg.ttcplus_threshold;
   hateb.ttcplus_timer = cfg.ttcplus_timer;
   hateb.rel_vel_cost_threshold = cfg.rel_vel_cost_threshold;
+  hateb.invisible_human_threshold = cfg.invisible_human_threshold;
   hateb.visibility_cost_threshold = cfg.visibility_cost_threshold;
   hateb.pose_prediction_reset_time = cfg.agent_pose_prediction_reset_time;
 

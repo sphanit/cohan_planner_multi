@@ -35,7 +35,7 @@ class InvisibleHumans(object):
     rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, self.mapCB)
     self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 10)
     # self.pub_invis_human = rospy.Publisher('invisible_humans', PointArray, queue_size = 10)
-    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/obstacles', ObstacleArrayMsg, queue_size=100)
+    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size=100)
 
 
     #Intialize tf2 transform listener

@@ -60,7 +60,7 @@
 #include <g2o/solvers/csparse/linear_solver_csparse.h>
 #include <g2o/solvers/cholmod/linear_solver_cholmod.h>
 
-// g2o custom edges and vertices for the TEB planner
+// g2o custom edges and vertices for the HATEB planner
 #include <hateb_local_planner/g2o_types/edge_velocity.h>
 #include <hateb_local_planner/g2o_types/edge_acceleration.h>
 #include <hateb_local_planner/g2o_types/edge_dynamic_obstacle.h>
@@ -70,6 +70,7 @@
 #include <hateb_local_planner/g2o_types/edge_agent_robot_ttc.h>
 #include <hateb_local_planner/g2o_types/edge_agent_robot_ttcplus.h>
 #include <hateb_local_planner/g2o_types/edge_agent_robot_visibility.h>
+#include <hateb_local_planner/g2o_types/edge_invisible_human.h>
 #include <hateb_local_planner/g2o_types/edge_kinematics.h>
 #include <hateb_local_planner/g2o_types/edge_time_optimal.h>
 #include <hateb_local_planner/g2o_types/edge_shortest_path.h>
@@ -682,6 +683,8 @@ protected:
    */
   void AddEdgesDynamicObstacles(double weight_multiplier=1.0);
   void AddEdgesDynamicObstaclesForAgents(double weight_multiplier=1.0);
+  void AddEdgesInvisibleHumans(double weight_multiplier=1.0);
+
 
   /**
    * @brief Add all edges (local cost functions) for satisfying kinematic constraints of a differential drive robot

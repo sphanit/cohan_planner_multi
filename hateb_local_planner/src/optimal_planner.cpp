@@ -161,6 +161,7 @@ void TebOptimalPlanner::registerG2OTypes()
   factory->registerType("EDGE_OBSTACLE", new g2o::HyperGraphElementCreator<EdgeObstacle>);
   factory->registerType("EDGE_INFLATED_OBSTACLE", new g2o::HyperGraphElementCreator<EdgeInflatedObstacle>);
   factory->registerType("EDGE_DYNAMIC_OBSTACLE", new g2o::HyperGraphElementCreator<EdgeDynamicObstacle>);
+  factory->registerType("EDGE_INVISIBLE_HUMAN", new g2o::HyperGraphElementCreator<EdgeInvisibleHuman>);
   factory->registerType("EDGE_VIA_POINT", new g2o::HyperGraphElementCreator<EdgeViaPoint>);
   factory->registerType("EDGE_PREFER_ROTDIR", new g2o::HyperGraphElementCreator<EdgePreferRotDir>);
 
@@ -636,7 +637,10 @@ bool TebOptimalPlanner::buildGraph(double weight_multiplier)
       AddEdgesAgentRobotRelVelocity();
     }
     if (cfg_->hateb.use_agent_robot_visi_c){
-        AddEdgesAgentRobotVisibility();
+      AddEdgesAgentRobotVisibility();
+    }
+    if (cfg_->hateb.add_invisible_humans){
+      AddEdgesInvisibleHumans();
     }
     break;
   case 2:
@@ -1043,9 +1047,39 @@ void TebOptimalPlanner::AddEdgesDynamicObstacles(double weight_multiplier)
 
   for (ObstContainer::const_iterator obst = obstacles_->begin(); obst != obstacles_->end(); ++obst)
   {
-    if (!(*obst)->isDynamic())
+    if (!(*obst)->isDynamic() || (*obst)->isHuman())
       continue;
 
+    // Skip first and last pose, as they are fixed
+    double time = teb_.TimeDiff(0);
+    for (int i=1; i < teb_.sizePoses() - 1; ++i)
+    {
+      EdgeDynamicObstacle* dynobst_edge = new EdgeDynamicObstacle(time);
+      dynobst_edge->setVertex(0,teb_.PoseVertex(i));
+      dynobst_edge->setInformation(information);
+      dynobst_edge->setParameters(*cfg_, robot_model_.get(), obst->get());
+      optimizer_->addEdge(dynobst_edge);
+      time += teb_.TimeDiff(i); // we do not need to check the time diff bounds, since we iterate to "< sizePoses()-1".
+    }
+  }
+}
+
+void TebOptimalPlanner::AddEdgesInvisibleHumans(double weight_multiplier)
+{
+  if (cfg_->optim.weight_invisible_human==0 || weight_multiplier==0 || obstacles_==NULL )
+    return; // if weight equals zero skip adding edges!
+
+  Eigen::Matrix<double,2,2> information;
+  information(0,0) = cfg_->optim.weight_invisible_human * weight_multiplier;
+  information(1,1) = 0;
+  information(0,1) = information(1,0) = 0;
+
+  for (ObstContainer::const_iterator obst = obstacles_->begin(); obst != obstacles_->end(); ++obst)
+  {
+    if (!(*obst)->isDynamic() || !(*obst)->isHuman())
+      continue;
+
+    //TODO: Need to edit this part
     // Skip first and last pose, as they are fixed
     double time = teb_.TimeDiff(0);
     for (int i=1; i < teb_.sizePoses() - 1; ++i)
@@ -1924,14 +1958,14 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
   double time_opt_cost = 0.0, kinematics_dd_cost = 0.0, shortest_path_cost =0.0,
          kinematics_cl_cost = 0.0, robot_vel_cost = 0.0, agent_vel_cost = 0.0, robot_vel_holo_cost=0.0,robot_acc_holo_cost=0.0,
          robot_acc_cost = 0.0, agent_acc_cost = 0.0, agent_vel_holo_cost =0.0,agent_acc_holo_cost=0.0, obst_cost = 0.0,rot_dir_cost=0.0,
-         dyn_obst_cost = 0.0, via_cost = 0.0, hr_safety_cost = 0.0,
+         dyn_obst_cost = 0.0, via_cost = 0.0, hr_safety_cost = 0.0, inv_human_cost = 0.0,
          hh_safety_cost = 0.0, hr_ttc_cost = 0.0, hr_ttclosest_cost = 0.0 ,hr_ttcplus_cost = 0.0 ,  hr_rel_vel_cost = 0.0, hr_visi_cost = 0.0,ttcplus_error=0.0;
 
   std::vector<double> time_opt_cost_vector, kinematics_dd_cost_vector, kinematics_cl_cost_vector,
                       robot_vel_cost_vector, agent_vel_cost_vector, robot_vel_holo_cost_vector,agent_vel_holo_cost_vector, robot_acc_cost_vector,robot_acc_holo_cost_vector,
                       agent_acc_cost_vector, agent_acc_holo_cost_vector, obst_cost_vector, dyn_obst_cost_vector, via_cost_vector, hr_safety_cost_vector,
                       hh_safety_cost_vector, hr_ttc_cost_vector, hr_ttclosest_cost_vector, hr_ttcplus_cost_vector,
-                      hr_rel_vel_cost_vector, hr_visi_cost_vector, shortest_path_cost_vector;
+                      hr_rel_vel_cost_vector, hr_visi_cost_vector, shortest_path_cost_vector, inv_human_cost_vector;
 
   bool f1=false,f2=false,f3=false,f4=false,f5=false;
   double ttc_first, ttcplus_first, obs_first, safety_first, visible_first;
@@ -2084,6 +2118,13 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
       cur_cost *= obst_cost_scale;
       dyn_obst_cost += cur_cost;
       dyn_obst_cost_vector.push_back(cur_cost);
+      cost_ += cur_cost;
+      continue;
+    }
+
+    if (dynamic_cast<EdgeInvisibleHuman *>(*it) != nullptr) {
+      inv_human_cost += cur_cost;
+      inv_human_cost_vector.push_back(cur_cost);
       cost_ += cur_cost;
       continue;
     }

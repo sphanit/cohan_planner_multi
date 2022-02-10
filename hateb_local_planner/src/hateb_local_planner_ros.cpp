@@ -212,6 +212,9 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     // setup callback for custom obstacles
     custom_obst_sub_ = nh.subscribe("obstacles", 1, &HATebLocalPlannerROS::customObstacleCB, this);
 
+    //callback for invisible humans
+    inv_humans_sub_ = nh.subscribe("invisible_humans", 1, &HATebLocalPlannerROS::InvHumansCB, this);
+
     // setup callback for custom via-points
     via_points_sub_ = nh.subscribe("via_points", 1, &HATebLocalPlannerROS::customViaPointsCB, this);
 
@@ -723,6 +726,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
   // also consider custom obstacles (must be called after other updates, since the container is not cleared)
   updateObstacleContainerWithCustomObstacles();
+  updateObstacleContainerWithInvHumans();
   auto cc_time = ros::Time::now() - cc_start_time;
 
   // Do not allow config changes during the following optimization step
@@ -1400,6 +1404,84 @@ void HATebLocalPlannerROS::updateObstacleContainerWithCustomObstacles()
     }
   }
 }
+
+
+void HATebLocalPlannerROS::updateObstacleContainerWithInvHumans()
+{
+  // Add custom obstacles obtained via message
+  boost::mutex::scoped_lock l(inv_human_mutex_);
+
+  if (!inv_humans_msg_.obstacles.empty())
+  {
+    // We only use the global header to specify the obstacle coordinate system instead of individual ones
+    Eigen::Affine3d obstacle_to_map_eig;
+    try
+    {
+      geometry_msgs::TransformStamped obstacle_to_map =  tf_->lookupTransform(global_frame_, ros::Time::now(),
+                                                                              inv_humans_msg_.header.frame_id, ros::Time::now(),
+                                                                              inv_humans_msg_.header.frame_id, ros::Duration(0.8));
+      obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
+    }
+    catch (tf::TransformException ex)
+    {
+      ROS_ERROR("%s",ex.what());
+      obstacle_to_map_eig.setIdentity();
+    }
+
+    for (size_t i=0; i<inv_humans_msg_.obstacles.size(); ++i)
+    {
+      if (inv_humans_msg_.obstacles.at(i).polygon.points.size() == 1 && inv_humans_msg_.obstacles.at(i).radius > 0 ) // circle
+      {
+        Eigen::Vector3d pos( inv_humans_msg_.obstacles.at(i).polygon.points.front().x,
+                             inv_humans_msg_.obstacles.at(i).polygon.points.front().y,
+                             inv_humans_msg_.obstacles.at(i).polygon.points.front().z );
+        obstacles_.push_back(ObstaclePtr(new CircularObstacle( (obstacle_to_map_eig * pos).head(2), inv_humans_msg_.obstacles.at(i).radius)));
+      }
+      else if (inv_humans_msg_.obstacles.at(i).polygon.points.size() == 1 ) // point
+      {
+        Eigen::Vector3d pos( inv_humans_msg_.obstacles.at(i).polygon.points.front().x,
+                             inv_humans_msg_.obstacles.at(i).polygon.points.front().y,
+                             inv_humans_msg_.obstacles.at(i).polygon.points.front().z );
+        obstacles_.push_back(ObstaclePtr(new PointObstacle( (obstacle_to_map_eig * pos).head(2) )));
+      }
+      else if (inv_humans_msg_.obstacles.at(i).polygon.points.size() == 2 ) // line
+      {
+        Eigen::Vector3d line_start( inv_humans_msg_.obstacles.at(i).polygon.points.front().x,
+                                    inv_humans_msg_.obstacles.at(i).polygon.points.front().y,
+                                    inv_humans_msg_.obstacles.at(i).polygon.points.front().z );
+        Eigen::Vector3d line_end( inv_humans_msg_.obstacles.at(i).polygon.points.back().x,
+                                  inv_humans_msg_.obstacles.at(i).polygon.points.back().y,
+                                  inv_humans_msg_.obstacles.at(i).polygon.points.back().z );
+        obstacles_.push_back(ObstaclePtr(new LineObstacle( (obstacle_to_map_eig * line_start).head(2),
+                                                           (obstacle_to_map_eig * line_end).head(2) )));
+      }
+      else if (inv_humans_msg_.obstacles.at(i).polygon.points.empty())
+      {
+        ROS_WARN("Invalid custom obstacle received. List of polygon vertices is empty. Skipping...");
+        continue;
+      }
+      else // polygon
+      {
+        PolygonObstacle* polyobst = new PolygonObstacle;
+        for (size_t j=0; j<inv_humans_msg_.obstacles.at(i).polygon.points.size(); ++j)
+        {
+          Eigen::Vector3d pos( inv_humans_msg_.obstacles.at(i).polygon.points[j].x,
+                               inv_humans_msg_.obstacles.at(i).polygon.points[j].y,
+                               inv_humans_msg_.obstacles.at(i).polygon.points[j].z );
+          polyobst->pushBackVertex( (obstacle_to_map_eig * pos).head(2) );
+        }
+        polyobst->finalizePolygon();
+        obstacles_.push_back(ObstaclePtr(polyobst));
+      }
+
+      // Set velocity, if obstacle is moving
+      if(!obstacles_.empty())
+        obstacles_.back()->setCentroidVelocity(inv_humans_msg_.obstacles[i].velocities, inv_humans_msg_.obstacles[i].orientation);
+        obstacles_.back()->setHuman();
+    }
+  }
+}
+
 
 void HATebLocalPlannerROS::updateViaPointsContainer(const std::vector<geometry_msgs::PoseStamped>& transformed_plan, double min_separation)
 {
@@ -2124,6 +2206,12 @@ void HATebLocalPlannerROS::customObstacleCB(const costmap_converter::ObstacleArr
   custom_obstacle_msg_ = *obst_msg;
 }
 
+void HATebLocalPlannerROS::InvHumansCB(const costmap_converter::ObstacleArrayMsg::ConstPtr& obst_msg)
+{
+  boost::mutex::scoped_lock l(inv_human_mutex_);
+  inv_humans_msg_ = *obst_msg;
+}
+
 void HATebLocalPlannerROS::customViaPointsCB(const nav_msgs::Path::ConstPtr& via_points_msg)
 {
   ROS_INFO_ONCE("Via-points received. This message is printed once.");
@@ -2385,6 +2473,7 @@ bool HATebLocalPlannerROS::optimizeStandalone(
   else
     updateObstacleContainerWithCostmap();
   updateObstacleContainerWithCustomObstacles();
+  updateObstacleContainerWithInvHumans();
   auto cc_time = ros::Time::now() - cc_start_time;
 
   // update via-points container

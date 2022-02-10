@@ -72,7 +72,7 @@ public:
   /**
     * @brief Default constructor of the abstract obstacle class
     */
-  Obstacle() : dynamic_(false), centroid_velocity_(Eigen::Vector2d::Zero())
+  Obstacle() : dynamic_(false), human_(false), centroid_velocity_(Eigen::Vector2d::Zero())
   {
   }
 
@@ -200,6 +200,13 @@ public:
   bool isDynamic() const {return dynamic_;}
 
   /**
+    *@brief returns true if the obstacle is marked as invisible human
+    */
+  bool isHuman() const {return human_;}
+
+  void setHuman() {human_ = true;}
+
+  /**
     * @brief Set the 2d velocity (vx, vy) of the obstacle w.r.t to the centroid
     * @remarks Setting the velocity using this function marks the obstacle as dynamic (@see isDynamic)
     * @param vel 2D vector containing the velocities of the centroid in x and y directions
@@ -283,6 +290,7 @@ public:
 protected:
 
   bool dynamic_; //!< Store flag if obstacle is dynamic (resp. a moving obstacle)
+  bool human_;
   Eigen::Vector2d centroid_velocity_; //!< Store the corresponding velocity (vx, vy) of the centroid (zero, if _dynamic is \c true)
 
 public:

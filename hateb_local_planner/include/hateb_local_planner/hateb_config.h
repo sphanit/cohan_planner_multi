@@ -211,6 +211,7 @@ public:
     double weight_agent_robot_ttcplus;
     double weight_agent_robot_rel_vel;
     double weight_agent_robot_visibility;
+    double weight_invisible_human;
     double agent_robot_ttc_scale_alpha;
     double agent_robot_ttcplus_scale_alpha;
     bool disable_warm_start;
@@ -228,6 +229,7 @@ public:
     bool scale_agent_robot_ttc_c;
     bool scale_agent_robot_ttcplus_c;
     bool use_agent_robot_rel_vel_c;
+    bool add_invisible_humans;
     bool use_agent_robot_visi_c;
     bool use_agent_elastic_vel;
     bool use_external_prediction;
@@ -239,6 +241,7 @@ public:
     double ttcplus_threshold;
     double ttcplus_timer;
     double rel_vel_cost_threshold;
+    double invisible_human_threshold;
     double visibility_cost_threshold;
     double pose_prediction_reset_time;
   } hateb;
@@ -447,6 +450,7 @@ public:
     optim.weight_agent_acc_lim_theta = 1;
     optim.weight_agent_optimaltime = 1;
     optim.weight_agent_viapoint = 1;
+    optim.weight_invisible_human = 1;
     optim.weight_agent_robot_safety = 20;
     optim.weight_agent_agent_safety = 20;
     optim.weight_agent_robot_ttc = 20;
@@ -469,6 +473,7 @@ public:
     hateb.scale_agent_robot_ttc_c = true;
     hateb.scale_agent_robot_ttcplus_c = true;
     hateb.use_agent_robot_rel_vel_c = true;
+    hateb.add_invisible_humans = true;
     hateb.use_agent_robot_visi_c = true;
     hateb.use_agent_elastic_vel = true;
     hateb.use_external_prediction = false;

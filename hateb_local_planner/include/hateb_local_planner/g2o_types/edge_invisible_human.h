@@ -71,7 +71,7 @@ public:
     const VertexPose* bandpt = static_cast<const VertexPose*>(_vertices[0]);
     double dist = robot_model_->calculateDistance(bandpt->pose(), _measurement);
 
-    double cost = std::max(V_i - a_norm*t_, 0.0)/dist;
+    double cost = std::max(V_i - a_min*t_, 0.0)/dist;
     _error[0] = penaltyBoundFromAbove(cost, cfg_->hateb.invisible_human_threshold, cfg_->optim.penalty_epsilon);
 
     ROS_ASSERT_MSG(std::isfinite(_error[0]), "EdgeInvisibleHuman::computeError() _error[0]=%f\n",_error[0]);
@@ -114,6 +114,7 @@ protected:
   const BaseRobotFootprintModel* robot_model_; //!< Store pointer to robot_model
   double t_; //!< Estimated time until current pose is reached
   double V_i = 1.5;
+  double a_min = 0.1;
   double a_norm = 0.68;
   double a_max = 1.44;
 

@@ -1039,8 +1039,11 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   else if(isMode == 2){
     mode = "Backoff";
   }
+  else if(isMode == 3){
+    mode = "Passing through";
+  }
   else if(isMode == 4){
-    mode = "DoorPass";
+    mode = "Approaching Pillar";
   }
   else{
       mode = "SingleBand";
@@ -1520,7 +1523,14 @@ void HATebLocalPlannerROS::updateObstacleContainerWithInvHumans()
                                           inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().y - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().y);
 
       if(dist_idx[0].first < 2.0  && abs(dist_idx[0].first - dist_idx[1].first)<0.1 && seperation_dist < 3.0 && !door_pass){
-        isMode = 3;
+
+        if(inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().z > 1.33){
+          isMode = 3;
+        }
+        else{
+          isMode = 4;
+        }
+
         door_pass = true;
         std::cout << "Possibility of door or narrow junction pass" << '\n';
         last_door_pass_detect_ = ros::Time::now();

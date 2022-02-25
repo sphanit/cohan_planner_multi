@@ -30,10 +30,11 @@ class InvisibleHumans(object):
     self.centers = [[],[]]
     self.info = []
     self.map = []
+    self.mid_scan = 0.0
 
     rospy.Subscriber('base_scan_filtered', LaserScan, self.laserCB)
-    rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, self.mapCB)
-    self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 10)
+    rospy.Subscriber("/map", OccupancyGrid, self.mapCB)
+    self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 100)
     # self.pub_invis_human = rospy.Publisher('invisible_humans', PointArray, queue_size = 10)
     self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size = 100)
 
@@ -56,9 +57,10 @@ class InvisibleHumans(object):
     self.y_vis = []
     self.corners = [[],[]]
     self.rays = [[],[]]
+    self.mid_scan = scan.ranges[len(scan.ranges)/2]
     for i in range(0,len(scan.ranges)):
       angle = scan.angle_min + (i * scan.angle_increment)
-      if abs(angle) < 1.4:
+      if abs(angle) < 1.2:
         self.x_vis[len(self.x_vis):] = [scan.ranges[i]*np.cos(angle)]
         self.y_vis[len(self.y_vis):] = [scan.ranges[i]*np.sin(angle)]
         idx = len(self.x_vis) - 1
@@ -87,8 +89,9 @@ class InvisibleHumans(object):
 
 
   def mapCB(self, map):
-    self.info = map.info
-    self.map = map.data
+    if len(self.map) < 2:
+      self.info = map.info
+      self.map = map.data
 
   def publish_to_cohan_obstacles(self, humans):
 
@@ -105,7 +108,7 @@ class InvisibleHumans(object):
       obstacle_msg.obstacles[i].polygon.points = [Point32()]
       obstacle_msg.obstacles[i].polygon.points[0].x = humans[i][0]
       obstacle_msg.obstacles[i].polygon.points[0].y = humans[i][1]
-      obstacle_msg.obstacles[i].polygon.points[0].z = 0
+      obstacle_msg.obstacles[i].polygon.points[0].z = self.mid_scan
 
       yaw = math.atan2(humans[i][3], humans[i][2])
       q = quaternion_from_euler(0,0,yaw)
@@ -118,7 +121,7 @@ class InvisibleHumans(object):
       obstacle_msg.obstacles[i].velocities.twist.angular.y = 0
       obstacle_msg.obstacles[i].velocities.twist.angular.z = 0
     self.pub_invis_human.publish(obstacle_msg)
- 
+
   # def add_to_memory(self):
 
   def locate_humans(self):
@@ -157,7 +160,7 @@ class InvisibleHumans(object):
         if math.isnan(y1):
           y1 = 7.0
 
-        l_or_r = checkPoint([-0.275,-0.55], [1.0,0.0],[x,y])
+        l_or_r = checkPoint([-0.275,-0.055], [1.0,0.0],[x,y])
         v_mag = np.linalg.norm([x1-x, y1-y])
         ux = (x1-x)/v_mag
         uy = (y1-y)/v_mag
@@ -166,6 +169,7 @@ class InvisibleHumans(object):
         alp = 0.1
         center = [0,0]
         hum_rad = 0.3
+        remove_detection = False
         while(True):
           if(l_or_r == 1):
             pt = getLeftPoint([x,y],[x1,y1],[xt,yt],dist = hum_rad)
@@ -209,16 +213,40 @@ class InvisibleHumans(object):
           yt = yt + alp*uy
 
           if (np.linalg.norm([xt-x,yt-y])>=np.linalg.norm([x1-x,y1-y])) or (np.linalg.norm([xt,yt])>=7.0):
+            remove_detection = True
             break
 
           if m_idx_c > (len(self.map) - 1) or m_idx_l > (len(self.map) - 1) or m_idx_r > (len(self.map) - 1):
-            continue
+            remove_detection = True
+            break
 
           if (self.map[m_idx_l] == 0 and self.map[m_idx_r] == 0 and self.map[m_idx_c] == 0):
             break
 
+        # Remove false detections
+        if remove_detection:
+          continue
+
         self.centers[0][len(self.centers[0]):] = [center[0]]
         self.centers[1][len(self.centers[1]):] = [center[1]]
+
+        # Filter the detections based on the 2D map using ray tracing
+        n_div = 50
+        Dx = (p4.pose.position.x - p3.pose.position.x)/n_div
+        Dy = (p4.pose.position.y - p3.pose.position.y)/n_div
+        ray_pos_x = p3.pose.position.x
+        ray_pos_y = p3.pose.position.y
+        for j in range(0,n_div):
+          ray_mx, ray_my = worldTomap(ray_pos_x,ray_pos_y, self.info)
+          if (self.map[getIndex(ray_mx, ray_my, self.info)] > 0 and self.map[getIndex(ray_mx, ray_my, self.info)] < 50) or self.map[getIndex(ray_mx, ray_my, self.info)] == -1:
+            remove_detection = True
+            break
+          ray_pos_x += Dx
+          ray_pos_y += Dy
+
+        # Remove false detections
+        if remove_detection:
+          continue
 
         vel_ux = p4.pose.position.x - p3.pose.position.x
         vel_uy = p4.pose.position.y - p3.pose.position.y

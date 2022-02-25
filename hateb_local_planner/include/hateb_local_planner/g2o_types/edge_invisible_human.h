@@ -47,7 +47,7 @@
 namespace hateb_local_planner
 {
 
-class EdgeInvisibleHuman : public BaseTebUnaryEdge<1, const Obstacle*, VertexPose>
+class EdgeInvisibleHuman : public BaseTebMultiEdge<1, double>
 {
 public:
 
@@ -56,10 +56,12 @@ public:
    */
   EdgeInvisibleHuman() : t_(0)
   {
+    this->resize(3);
   }
 
   EdgeInvisibleHuman(double t) : t_(t)
   {
+    this->resize(3);
   }
 
   /**
@@ -69,22 +71,22 @@ public:
   {
     ROS_ASSERT_MSG(cfg_ && _measurement && robot_model_, "You must call setHATebConfig(), setObstacle() and setRobotModel() on EdgeInvisibleHuman()");
     const VertexPose* bandpt = static_cast<const VertexPose*>(_vertices[0]);
-    double dist = robot_model_->calculateDistance(bandpt->pose(), _measurement);
+    const VertexPose *bandpt_nxt = static_cast<const VertexPose *>(_vertices[1]);
+    const VertexTimeDiff *dt_ = static_cast<const VertexTimeDiff *>(_vertices[2]);
 
-    double cost = std::max(V_i - a_min*t_, 0.0)/dist;
+    Eigen::Vector2d diff_robot = bandpt_nxt->position() - bandpt->position();
+    Eigen::Vector2d robot_vel = diff_robot / dt_->dt();
+
+    double dist = robot_model_->calculateDistance(bandpt->pose(), _measurement);
+    // double cost = (V_i+robot_vel.norm())/dist;
+    double cost = V_i/dist;
+    if(t_ > 0.5) //Accounting for human reaction time
+      // cost = (std::max(V_i - a_norm*t_, 0.0) + robot_vel.norm()+0.01)/dist;
+      cost = (std::max(V_i - a_norm*t_, 0.0))/dist;
+
     _error[0] = penaltyBoundFromAbove(cost, cfg_->hateb.invisible_human_threshold, cfg_->optim.penalty_epsilon);
 
     ROS_ASSERT_MSG(std::isfinite(_error[0]), "EdgeInvisibleHuman::computeError() _error[0]=%f\n",_error[0]);
-  }
-
-
-  /**
-   * @brief Set Obstacle for the underlying cost function
-   * @param obstacle Const pointer to an Obstacle or derived Obstacle
-   */
-  void setObstacle(const Obstacle* obstacle)
-  {
-    _measurement = obstacle;
   }
 
   /**
@@ -112,11 +114,12 @@ public:
 protected:
 
   const BaseRobotFootprintModel* robot_model_; //!< Store pointer to robot_model
+  const Obstacle* _measurement;
   double t_; //!< Estimated time until current pose is reached
   double V_i = 1.5;
   double a_min = 0.1;
   double a_norm = 0.68;
-  double a_max = 1.44;
+  double a_max = 2.94; // 0.3g
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

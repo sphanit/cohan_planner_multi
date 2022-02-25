@@ -35,7 +35,7 @@ class InvisibleHumans(object):
     rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, self.mapCB)
     self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 10)
     # self.pub_invis_human = rospy.Publisher('invisible_humans', PointArray, queue_size = 10)
-    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size=100)
+    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size = 100)
 
 
     #Intialize tf2 transform listener
@@ -58,7 +58,7 @@ class InvisibleHumans(object):
     self.rays = [[],[]]
     for i in range(0,len(scan.ranges)):
       angle = scan.angle_min + (i * scan.angle_increment)
-      if abs(angle) < 1.6:
+      if abs(angle) < 1.4:
         self.x_vis[len(self.x_vis):] = [scan.ranges[i]*np.cos(angle)]
         self.y_vis[len(self.y_vis):] = [scan.ranges[i]*np.sin(angle)]
         idx = len(self.x_vis) - 1
@@ -118,7 +118,8 @@ class InvisibleHumans(object):
       obstacle_msg.obstacles[i].velocities.twist.angular.y = 0
       obstacle_msg.obstacles[i].velocities.twist.angular.z = 0
     self.pub_invis_human.publish(obstacle_msg)
-
+ 
+  # def add_to_memory(self):
 
   def locate_humans(self):
     # print("locating")
@@ -230,7 +231,6 @@ class InvisibleHumans(object):
         # c_point.y = p3.pose.position.y + 0.055
         # c_point.z = 0.0
         # inv_humans.points.append(c_point)
-
 
         yaw = math.atan2(1.5*math.sin(vec_ang), 1.5*math.cos(vec_ang))
         q = quaternion_from_euler(0,0,yaw)

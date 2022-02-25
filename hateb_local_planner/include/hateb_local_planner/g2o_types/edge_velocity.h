@@ -82,7 +82,7 @@ public:
    */
   EdgeVelocity()
   {
-    this->resize(4); // Since we derive from a g2o::BaseMultiEdge, set the desired number of vertices
+    this->resize(3); // Since we derive from a g2o::BaseMultiEdge, set the desired number of vertices
   }
 
   /**
@@ -95,26 +95,12 @@ public:
     const VertexPose* conf2 = static_cast<const VertexPose*>(_vertices[1]);
     const VertexTimeDiff* deltaT = static_cast<const VertexTimeDiff*>(_vertices[2]);
 
-    // For the velocity based on Agent Position
-    const VertexPose *agent_bandpt = static_cast<const VertexPose *>(_vertices[3]);
-    static_cast<PointObstacle *>(obs_)->setCentroid(agent_bandpt->x(), agent_bandpt->y());
+    double vel_linear = cfg_->robot.max_vel_x;
+    double vel_theta = cfg_->robot.max_vel_theta;
 
-    double d = robot_model_->calculateDistance(conf1->pose(), obs_) - agent_radius_;
-
-    double func = 1.0;
-    double func_theta = 1.0;
-    if (agent_radius_>0.0){
-      func = std::min(1.0,std::max(std::pow(10,(d-2)),0.25)); // a = 4.64 to set the min value at 0.5m
-      func_theta = std::min(1.0,std::max(std::pow(10,(d-2)),0.25)); // a = 4.64 to set the min value at 0.5m
-      // if(d <=2.0 && cfg_->optim.weight_viapoint!=10.0)
-      //   system("rosrun dynamic_reconfigure dynparam set /move_base_node/TebLocalPlannerROS/ weight_viapoint 10.0");
-      // else if(cfg_->optim.weight_viapoint!=0.05)
-      //   system("rosrun dynamic_reconfigure dynparam set /move_base_node/TebLocalPlannerROS/ weight_viapoint 0.05");
+    if(mode == 3){
+      vel_linear = 0.2;
     }
-
-    double vel_linear = cfg_->robot.max_vel_x;// * (func);
-    double vel_theta = cfg_->robot.max_vel_theta;// * (func_theta);
-    // Until here
 
     const Eigen::Vector2d deltaS = conf2->estimate().position() - conf1->estimate().position();
 
@@ -138,16 +124,16 @@ public:
     ROS_ASSERT_MSG(std::isfinite(_error[0]), "EdgeVelocity::computeError() _error[0]=%f _error[1]=%f\n",_error[0],_error[1]);
   }
 
-  void setParameters(const HATebConfig &cfg, const BaseRobotFootprintModel *robot_model, const double agent_radius) {
+  void setParameters(const HATebConfig &cfg, const BaseRobotFootprintModel *robot_model, const int isMode) {
     cfg_ = &cfg;
     robot_model_ = robot_model;
-    agent_radius_ = agent_radius;
+    mode = isMode;
   }
 
 protected:
   const BaseRobotFootprintModel *robot_model_;
   Obstacle *obs_ = new PointObstacle();
-  double agent_radius_ = std::numeric_limits<double>::infinity();
+  int mode = 0;
 
 #ifdef USE_ANALYTIC_JACOBI
 #if 0 //TODO the hardcoded jacobian does not include the changing direction (just the absolute value)
@@ -260,7 +246,7 @@ public:
    */
   EdgeVelocityHolonomic()
   {
-    this->resize(4); // Since we derive from a g2o::BaseMultiEdge, set the desired number of vertices
+    this->resize(3); // Since we derive from a g2o::BaseMultiEdge, set the desired number of vertices
   }
 
   /**
@@ -273,28 +259,14 @@ public:
     const VertexPose* conf2 = static_cast<const VertexPose*>(_vertices[1]);
     const VertexTimeDiff* deltaT = static_cast<const VertexTimeDiff*>(_vertices[2]);
 
-    // For the velocity based on Agent Position
-    const VertexPose *agent_bandpt = static_cast<const VertexPose *>(_vertices[3]);
-    static_cast<PointObstacle *>(obs_)->setCentroid(agent_bandpt->x(), agent_bandpt->y());
+    double vel_linear_x = cfg_->robot.max_vel_x;
+    double vel_linear_y = cfg_->robot.max_vel_y;
+    double vel_theta = cfg_->robot.max_vel_theta;
 
-    double d = robot_model_->calculateDistance(conf1->pose(), obs_) - agent_radius_;
-
-    double func = 1.0;
-    double func_theta =1.0;
-
-    if (agent_radius_>0.0){
-      func = std::min(1.0,std::max(std::pow(10,(d-2)),0.25)); // a = 4.64 to set the min value at 0.5m
-      func_theta = std::min(1.0,std::max(std::pow(10,(d-2)),0.25)); // a = 4.64 to set the min value at 0.5m
-      // if(d <=2.0 && cfg_->optim.weight_viapoint!=10.0)
-      //   system("rosrun dynamic_reconfigure dynparam set /move_base_node/TebLocalPlannerROS/ weight_viapoint 10.0");
-      // else if(cfg_->optim.weight_viapoint!=0.05)
-      //   system("rosrun dynamic_reconfigure dynparam set /move_base_node/TebLocalPlannerROS/ weight_viapoint 0.05");
+    if(mode == 3){
+      vel_linear_x = 0.2;
+      vel_linear_y = 0.01;
     }
-
-    double vel_linear_x = cfg_->robot.max_vel_x;// * (func);
-    double vel_linear_y = cfg_->robot.max_vel_y;// * (func);
-    double vel_theta = cfg_->robot.max_vel_theta;// * (func_theta);
-    // Until here
 
     Eigen::Vector2d deltaS = conf2->position() - conf1->position();
 
@@ -317,16 +289,16 @@ public:
                    "EdgeVelocityHolonomic::computeError() _error[0]=%f _error[1]=%f _error[2]=%f\n",_error[0],_error[1],_error[2]);
   }
 
-  void setParameters(const HATebConfig &cfg, const BaseRobotFootprintModel *robot_model, const double agent_radius) {
+  void setParameters(const HATebConfig &cfg, const BaseRobotFootprintModel *robot_model, const int isMode) {
     cfg_ = &cfg;
     robot_model_ = robot_model;
-    agent_radius_ = agent_radius;
+    mode = isMode;
   }
 
 protected:
   const BaseRobotFootprintModel *robot_model_;
   Obstacle *obs_ = new PointObstacle();
-  double agent_radius_ = std::numeric_limits<double>::infinity();
+  int mode = 0;
 
 
 public:

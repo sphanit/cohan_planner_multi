@@ -90,7 +90,7 @@ bool HomotopyClassPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& i
                                 const geometry_msgs::Twist* start_vel,
                                 bool free_goal_vel,
                                 const AgentPlanVelMap *initial_agent_plan_vels,
-                                hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+                                hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst, int Mode)
 {
   ROS_ASSERT_MSG(initialized_, "Call initialize() first.");
   auto start_time = ros::Time::now();
@@ -105,7 +105,7 @@ bool HomotopyClassPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& i
 }
 
 
-bool HomotopyClassPlanner::plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+bool HomotopyClassPlanner::plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst, int Mode)
 {
   ROS_ASSERT_MSG(initialized_, "Call initialize() first.");
   PoseSE2 start_pose(start);
@@ -114,7 +114,7 @@ bool HomotopyClassPlanner::plan(const tf::Pose& start, const tf::Pose& goal, con
   return plan(start_pose, goal_pose, start_vel, free_goal_vel, pre_plan_time, op_costs, dt_ref, dt_hyst);
 }
 
-bool HomotopyClassPlanner::plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, double pre_plan_time, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+bool HomotopyClassPlanner::plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, double pre_plan_time, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst, int Mode)
 {
   ROS_ASSERT_MSG(initialized_, "Call initialize() first.");
   auto start_time = ros::Time::now();

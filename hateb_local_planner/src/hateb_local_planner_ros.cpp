@@ -272,6 +272,7 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     agents_states_.states.clear();
     reset_states = true;
     stuck_agent_id = -1;
+    door_pass = false;
 
     // set initialized flag
     initialized_ = true;
@@ -593,6 +594,13 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   costmap_ros_->getRobotPose(robot_pose);
   robot_pose_ = PoseSE2(robot_pose.pose);
   robot_pose_.toPoseMsg(robot_pos_msg);
+
+  if((ros::Time::now()-last_door_pass_detect_).toSec()>=3.0 && door_pass){
+    door_pass = false;
+    isMode = 0;
+    std::cout << "Timed out" << '\n';
+    // system("rosrun dynamic_reconfigure dynparam set /move_base/HATebLocalPlannerROS \"{'max_vel_x': 0.7,'add_invisible_humans':True}\"");
+  }
   // robot_pose_pub_.publish(robot_pos_msg);
   // logs+="position: x= " + std::to_string(robot_pose.pose.position.x) +", " + " y= " + std::to_string(robot_pose.pose.position.y)+", ";
   logs+=std::to_string(robot_pose.pose.position.x) +", " + std::to_string(robot_pose.pose.position.y);
@@ -606,7 +614,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
     if(visible_agent_ids.size()>0){
       if(agent_still[visible_agent_ids[0]-1] && isDistunderThreshold && !stuck){
         if(change_mode==0){
-          ROS_INFO("I am stuck because of agent, Changing to VelObs mode");
+          ROS_INFO("I am stuck because of an agent, Changing to VelObs mode");
         }
         change_mode++;
         isMode = 1;
@@ -1021,10 +1029,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   }
 
   std::string mode;
-  if(isMode==-1 || isDistMax){
-    mode = "SingleBand";
-  }
-  else if(isMode==0){
+
+  if(isMode==0){
     mode = "DualBand";
   }
   else if(isMode == 1){
@@ -1033,6 +1039,12 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   else if(isMode == 2){
     mode = "Backoff";
   }
+  else if(isMode == 4){
+    mode = "DoorPass";
+  }
+  else{
+      mode = "SingleBand";
+    }
   // logs+="Mode: " + mode+", ";
 
   std_msgs::String log_msg;
@@ -1065,7 +1077,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   //     dt_hyst_resize = 0.1;
   //   }
 
-  bool success = planner_->plan(transformed_plan, &robot_vel_, cfg_.goal_tolerance.free_goal_vel, &transformed_agent_plan_vel_map, &op_costs, dt_resize, dt_hyst_resize);
+  bool success = planner_->plan(transformed_plan, &robot_vel_, cfg_.goal_tolerance.free_goal_vel, &transformed_agent_plan_vel_map, &op_costs, dt_resize, dt_hyst_resize, isMode);
 
   if (!success)
   {
@@ -1189,7 +1201,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   visualization_->publishObstacles(obstacles_);
   visualization_->publishViaPoints(via_points_);
   visualization_->publishGlobalPlan(global_plan_);
-  if(isDistMax)
+  if(isDistMax && !door_pass)
     visualization_->publishMode(-1);
   else
     visualization_->publishMode(isMode);
@@ -1239,6 +1251,7 @@ bool HATebLocalPlannerROS::isGoalReached()
     resetAgentsPrediction();
     change_mode = 0;
     isMode = 0;
+    door_pass = false;
     ext_goal = false;
     stuck = false;
     goal_ctrl = true;
@@ -1415,12 +1428,29 @@ void HATebLocalPlannerROS::updateObstacleContainerWithInvHumans()
   {
     // We only use the global header to specify the obstacle coordinate system instead of individual ones
     Eigen::Affine3d obstacle_to_map_eig;
+    double robot_x, robot_y, robot_yaw;
+    Eigen::Vector2d robot_vec;
+    std::vector<std::pair<double,int>> dist_idx;
+
     try
     {
       geometry_msgs::TransformStamped obstacle_to_map =  tf_->lookupTransform(global_frame_, ros::Time::now(),
                                                                               inv_humans_msg_.header.frame_id, ros::Time::now(),
                                                                               inv_humans_msg_.header.frame_id, ros::Duration(0.8));
+
       obstacle_to_map_eig = tf2::transformToEigen(obstacle_to_map);
+
+      geometry_msgs::TransformStamped transformStamped;
+      std::string base_link = "base_link";
+      if(ns_!=""){
+        base_link = ns_+"/"+base_link;
+      }
+      transformStamped = tf_->lookupTransform("map", base_link, ros::Time(0),ros::Duration(0.5));
+
+      robot_x = transformStamped.transform.translation.x;
+      robot_y = transformStamped.transform.translation.y;
+      robot_yaw = tf2::getYaw(transformStamped.transform.rotation);
+      robot_vec(std::cos(robot_yaw),std::sin(robot_yaw));
     }
     catch (tf::TransformException ex)
     {
@@ -1475,10 +1505,30 @@ void HATebLocalPlannerROS::updateObstacleContainerWithInvHumans()
       }
 
       // Set velocity, if obstacle is moving
-      if(!obstacles_.empty())
+      if(!obstacles_.empty()){
         obstacles_.back()->setCentroidVelocity(inv_humans_msg_.obstacles[i].velocities, inv_humans_msg_.obstacles[i].orientation);
         obstacles_.back()->setHuman();
+
+        double dist = std::hypot(inv_humans_msg_.obstacles.at(i).polygon.points.front().x-robot_x,inv_humans_msg_.obstacles.at(i).polygon.points.front().y-robot_y);
+        dist_idx.push_back(std::make_pair(dist,i));
+      }
     }
+
+    if(!obstacles_.empty() && dist_idx.size()>1){
+      std::sort(dist_idx.begin(),dist_idx.end());
+      double seperation_dist = std::hypot(inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().x - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().x,
+                                          inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().y - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().y);
+
+      if(dist_idx[0].first < 2.0  && abs(dist_idx[0].first - dist_idx[1].first)<0.1 && seperation_dist < 3.0 && !door_pass){
+        isMode = 3;
+        door_pass = true;
+        std::cout << "Possibility of door or narrow junction pass" << '\n';
+        last_door_pass_detect_ = ros::Time::now();
+        // system("rosrun dynamic_reconfigure dynparam set /move_base/HATebLocalPlannerROS max_vel_x 0.2");
+        // system("rosrun dynamic_reconfigure dynparam set /move_base/HATebLocalPlannerROS \"{'max_vel_x': 0.2,'add_invisible_humans':False}\"");
+      }
+    }
+
   }
 }
 
@@ -2530,7 +2580,7 @@ bool HATebLocalPlannerROS::optimizeStandalone(
     plan_start_vel_goal_vel.plan = agent_plan_combined.plan_to_optimize;
     plan_start_vel_goal_vel.start_vel = transformed_vel.twist;
     // plan_start_vel_goal_vel.nominal_vel = std::max(0.3,agent_nominal_vels[predicted_agents_poses.id-1]);
-    plan_start_vel_goal_vel.isMode = isMode;
+    // plan_start_vel_goal_vel.isMode = isMode;
     if (agent_plan_combined.plan_after.size() > 0) {
       plan_start_vel_goal_vel.goal_vel = transformed_vel.twist;
     }
@@ -2557,7 +2607,7 @@ bool HATebLocalPlannerROS::optimizeStandalone(
 
   bool success = planner_->plan(transformed_plan, &robot_vel_,
                                 cfg_.goal_tolerance.free_goal_vel,
-                                &transformed_agent_plan_vel_map,&op_costs, dt_resize, dt_hyst_resize);
+                                &transformed_agent_plan_vel_map,&op_costs, dt_resize, dt_hyst_resize, isMode);
   if (!success) {
     planner_->clearPlanner();
     res.success = false;

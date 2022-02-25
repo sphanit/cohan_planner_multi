@@ -575,9 +575,9 @@ private:
 
   //Planner State determining parameters
   // different flags, times and measures
-  bool isDistunderThreshold, isDistMax, stuck, goal_ctrl, reset_states, ext_goal, backed_off;
+  bool isDistunderThreshold, isDistMax, stuck, goal_ctrl, reset_states, ext_goal, backed_off, door_pass;
   std::vector<bool> agent_still;
-  ros::Time last_position_time, last_omega_sign_change_;
+  ros::Time last_position_time, last_omega_sign_change_, last_door_pass_detect_;
   double last_omega_;
 
   // Mode of the Planner (or planning state holder) and counter

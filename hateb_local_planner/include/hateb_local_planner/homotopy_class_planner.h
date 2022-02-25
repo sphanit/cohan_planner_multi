@@ -166,7 +166,8 @@ public:
                     const AgentPlanVelMap *initial_agent_plan_vels =  NULL,
                     hateb_local_planner::OptimizationCostArray *op_costs = NULL,
                     double dt_ref=0.4,
-                    double dt_hyst=0.1);
+                    double dt_hyst=0.1,
+                    int Mode = 0);
 
   /**
    * @brief Plan a trajectory between a given start and goal pose (tf::Pose version).
@@ -179,7 +180,7 @@ public:
    *		      otherwise the final velocity will be zero (default: false)
    * @return \c true if planning was successful, \c false otherwise
    */
-  virtual bool plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false, hateb_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref=0.4, double dt_hyst=0.1);
+  virtual bool plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false, hateb_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref=0.4, double dt_hyst=0.1, int Mode=0);
 
   /**
    * @brief Plan a trajectory between a given start and goal pose.
@@ -192,7 +193,7 @@ public:
    *		      otherwise the final velocity will be zero (default: false)
    * @return \c true if planning was successful, \c false otherwise
    */
-  virtual bool plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false,  double pre_plan_time=0.0, hateb_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref = 0.4, double dt_hyst=0.1);
+  virtual bool plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false,  double pre_plan_time=0.0, hateb_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref = 0.4, double dt_hyst=0.1, int Mode=0);
 
   /**
    * @brief Get the velocity command from a previously optimized plan to control the robot at the current sampling interval.

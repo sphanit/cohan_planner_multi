@@ -284,8 +284,9 @@ void TebOptimalPlanner::setVelocityGoal(const geometry_msgs::Twist& vel_goal)
   vel_goal_.second = vel_goal;
 }
 
-bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& initial_plan, const geometry_msgs::Twist* start_vel, bool free_goal_vel, const AgentPlanVelMap *initial_agent_plan_vel_map, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& initial_plan, const geometry_msgs::Twist* start_vel, bool free_goal_vel, const AgentPlanVelMap *initial_agent_plan_vel_map, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst, int Mode)
 {
+  isMode = Mode;
   ROS_ASSERT_MSG(initialized_, "Call initialize() first.");
   auto prep_start_time = ros::Time::now();
   if (!teb_.isInit())
@@ -336,7 +337,6 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
   agents_vel_start_.clear();
   agents_vel_goal_.clear();
   agent_nominal_vels.clear();
-  isMode = 0;
 
   current_agent_robot_min_dist = std::numeric_limits<double>::max();
 
@@ -360,7 +360,7 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
       auto &agent_id = initial_agent_plan_vel_kv.first;
       auto &initial_agent_plan = initial_agent_plan_vel_kv.second.plan;
       agent_nominal_vels.push_back(initial_agent_plan_vel_kv.second.nominal_vel);
-      isMode = initial_agent_plan_vel_kv.second.isMode;
+      // isMode = initial_agent_plan_vel_kv.second.isMode;
       // erase agent-teb if agent plan is empty
       if (initial_agent_plan.empty()) {
         auto itr = agents_tebs_map_.find(agent_id);
@@ -496,8 +496,9 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
 }
 
 
-bool TebOptimalPlanner::plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+bool TebOptimalPlanner::plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst, int Mode)
 {
+  isMode = Mode;
   auto start_time = ros::Time::now();
   PoseSE2 start_(start);
   PoseSE2 goal_(goal);
@@ -507,8 +508,9 @@ bool TebOptimalPlanner::plan(const tf::Pose& start, const tf::Pose& goal, const 
   return plan(start_, goal_, vel, free_goal_vel, pre_plan_time.toSec(), op_costs, dt_ref, dt_hyst);
 }
 
-bool TebOptimalPlanner::plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, double pre_plan_time, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+bool TebOptimalPlanner::plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, double pre_plan_time, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst, int Mode)
 {
+  isMode = Mode;
   ROS_ASSERT_MSG(initialized_, "Call initialize() first.");
   auto prep_start_time = ros::Time::now();
   if (!teb_.isInit())
@@ -1066,13 +1068,11 @@ void TebOptimalPlanner::AddEdgesDynamicObstacles(double weight_multiplier)
 
 void TebOptimalPlanner::AddEdgesInvisibleHumans(double weight_multiplier)
 {
-  if (cfg_->optim.weight_invisible_human==0 || weight_multiplier==0 || obstacles_==NULL )
+  if (cfg_->optim.weight_invisible_human==0 || weight_multiplier==0 || obstacles_==NULL || isMode == 3)
     return; // if weight equals zero skip adding edges!
 
-  Eigen::Matrix<double,2,2> information;
+  Eigen::Matrix<double,1,1> information;
   information(0,0) = cfg_->optim.weight_invisible_human * weight_multiplier;
-  information(1,1) = 0;
-  information(0,1) = information(1,0) = 0;
 
   for (ObstContainer::const_iterator obst = obstacles_->begin(); obst != obstacles_->end(); ++obst)
   {
@@ -1084,11 +1084,13 @@ void TebOptimalPlanner::AddEdgesInvisibleHumans(double weight_multiplier)
     double time = teb_.TimeDiff(0);
     for (int i=1; i < teb_.sizePoses() - 1; ++i)
     {
-      EdgeDynamicObstacle* dynobst_edge = new EdgeDynamicObstacle(time);
-      dynobst_edge->setVertex(0,teb_.PoseVertex(i));
-      dynobst_edge->setInformation(information);
-      dynobst_edge->setParameters(*cfg_, robot_model_.get(), obst->get());
-      optimizer_->addEdge(dynobst_edge);
+      EdgeInvisibleHuman* inv_human_edge = new EdgeInvisibleHuman(time);
+      inv_human_edge->setVertex(0,teb_.PoseVertex(i));
+      inv_human_edge->setVertex(1, teb_.PoseVertex(i + 1));
+      inv_human_edge->setVertex(2, teb_.TimeDiffVertex(i));
+      inv_human_edge->setInformation(information);
+      inv_human_edge->setParameters(*cfg_, robot_model_.get(), obst->get());
+      optimizer_->addEdge(inv_human_edge);
       time += teb_.TimeDiff(i); // we do not need to check the time diff bounds, since we iterate to "< sizePoses()-1".
     }
   }
@@ -1221,7 +1223,6 @@ void TebOptimalPlanner::AddEdgesVelocity()
       return; // if weight equals zero skip adding edges!
 
     int n = teb_.sizePoses();
-    int j = 0;
     Eigen::Matrix<double,2,2> information;
     information(0,0) = cfg_->optim.weight_max_vel_x;
     information(1,1) = cfg_->optim.weight_max_vel_theta;
@@ -1232,20 +1233,12 @@ void TebOptimalPlanner::AddEdgesVelocity()
       auto &agent_teb = agent_teb_kv.second;
       for (int i=0; i < n - 1; ++i)
       {
-        if(i<agent_teb.sizePoses())
-          j=i;
-
         EdgeVelocity* velocity_edge = new EdgeVelocity;
         velocity_edge->setVertex(0,teb_.PoseVertex(i));
         velocity_edge->setVertex(1,teb_.PoseVertex(i+1));
         velocity_edge->setVertex(2,teb_.TimeDiffVertex(i));
-        velocity_edge->setVertex(3, agent_teb.PoseVertex(j));
         velocity_edge->setInformation(information);
-        //TODO: Check this and update code
-        if(i<agent_teb.sizePoses())
-          velocity_edge->setParameters(*cfg_, robot_model_.get(), agent_radius_);
-        else
-          velocity_edge->setParameters(*cfg_, robot_model_.get(), 0.0);
+        velocity_edge->setParameters(*cfg_, robot_model_.get(), isMode);
         optimizer_->addEdge(velocity_edge);
       }
     }
@@ -1256,7 +1249,6 @@ void TebOptimalPlanner::AddEdgesVelocity()
       return; // if weight equals zero skip adding edges!
 
     int n = teb_.sizePoses();
-    int j = 0;
     Eigen::Matrix<double,3,3> information;
     information.fill(0);
     information(0,0) = cfg_->optim.weight_max_vel_x;
@@ -1267,19 +1259,12 @@ void TebOptimalPlanner::AddEdgesVelocity()
       auto &agent_teb = agent_teb_kv.second;
       for (int i=0; i < n - 1; ++i)
       {
-        if(i<agent_teb.sizePoses())
-          j=i;
         EdgeVelocityHolonomic* velocity_edge = new EdgeVelocityHolonomic;
         velocity_edge->setVertex(0,teb_.PoseVertex(i));
         velocity_edge->setVertex(1,teb_.PoseVertex(i+1));
         velocity_edge->setVertex(2,teb_.TimeDiffVertex(i));
-        velocity_edge->setVertex(3, agent_teb.PoseVertex(j));
         velocity_edge->setInformation(information);
-        //TODO: Check this and update code
-        if(i<agent_teb.sizePoses())
-          velocity_edge->setParameters(*cfg_, robot_model_.get(), agent_radius_);
-        else
-          velocity_edge->setParameters(*cfg_, robot_model_.get(), 0.0);
+        velocity_edge->setParameters(*cfg_, robot_model_.get(), isMode);
         optimizer_->addEdge(velocity_edge);
       }
     }
@@ -1766,9 +1751,6 @@ void TebOptimalPlanner::AddEdgesAgentRobotSafety() {
 
   double min_dist_ = cfg_->hateb.min_agent_robot_dist;
   double weight_safety = cfg_->optim.weight_agent_robot_safety;
-  // if(isMode==1){
-  //   weight_safety = 1.0;
-  // }
 
   if(current_agent_robot_min_dist < 2.0){
     for (auto &agent_teb_kv : agents_tebs_map_) {
@@ -1919,9 +1901,9 @@ void TebOptimalPlanner::AddVertexEdgesApproach() {
     return;
   }
   double min_dist_ = cfg_->hateb.min_agent_robot_dist;
-  if(isMode==1){
-    min_dist_ = 0.2;
-  }
+  // if(isMode==1){
+  //   min_dist_ = 0.2;
+  // }
 
   Eigen::Matrix<double, 1, 1> information_approach;
   information_approach.fill(cfg_->optim.weight_obstacle);

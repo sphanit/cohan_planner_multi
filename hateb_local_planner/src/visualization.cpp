@@ -677,6 +677,8 @@ void TebVisualization::publishMode(int Mode){
     mode_text.text = "PassingThrough";
   else if (Mode == 4)
     mode_text.text = "ApproachingPillar";
+  else if (Mode == 5)
+    mode_text.text = "ApproachingGoal";
   else
     mode_text.text = "No Mode yet";
 

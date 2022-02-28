@@ -43,8 +43,8 @@
 #define PREDICT_SERVICE_NAME "predict_agent_poses"
 #define PUBLISH_MARKERS_SRV_NAME "publish_prediction_markers"
 #define PREDICTED_AGENTS_MARKERS_PUB_TOPIC "predicted_agent_poses"
-// #define GET_PLAN_SRV_NAME "/move_base/GlobalPlanner/make_plan"
-#define GET_PLAN_SRV_NAME "/global_planner/planner/make_plan" // For model, not with move_base
+#define GET_PLAN_SRV_NAME "/move_base/GlobalPlanner/make_plan"
+// #define GET_PLAN_SRV_NAME "/global_planner/planner/make_plan" // For model, not with move_base
 #define DEFAULT_AGENT_PART cohan_msgs::TrackedSegmentType::TORSO
 #define MAX_AGENT_MARKERS 1000
 #define MIN_MARKER_LIFETIME 1.0

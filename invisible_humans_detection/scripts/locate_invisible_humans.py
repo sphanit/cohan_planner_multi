@@ -9,7 +9,6 @@ import math
 import tf2_geometry_msgs
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import PoseStamped, Point, Point32, QuaternionStamped, Quaternion
-from cohan_msgs.msg import PointArray
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import OccupancyGrid
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
@@ -30,12 +29,12 @@ class InvisibleHumans(object):
     self.centers = [[],[]]
     self.info = []
     self.map = []
+    self.scan = []
     self.mid_scan = 0.0
 
-    rospy.Subscriber('base_scan_filtered', LaserScan, self.laserCB)
+    rospy.Subscriber('/map_scanner/map_scan', LaserScan, self.laserCB)
     rospy.Subscriber("/map", OccupancyGrid, self.mapCB)
     self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 100)
-    # self.pub_invis_human = rospy.Publisher('invisible_humans', PointArray, queue_size = 10)
     self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size = 100)
 
 
@@ -51,10 +50,12 @@ class InvisibleHumans(object):
   def laserCB(self, scan):
     self.saved = False
     prev_point = [0.0,0.0]
+    self.scan = scan
     self.x = []
     self.y = []
     self.x_vis = []
     self.y_vis = []
+    self.opp_ang = []
     self.corners = [[],[]]
     self.rays = [[],[]]
     self.mid_scan = scan.ranges[len(scan.ranges)/2]
@@ -74,11 +75,13 @@ class InvisibleHumans(object):
               self.corners[1][len(self.corners[1]):] = [prev_point[1]]
               self.rays[0][len(self.rays[0]):] = [self.x_vis[idx]]
               self.rays[1][len(self.rays[1]):] = [self.y_vis[idx]]
+              # self.opp_ang[len(self.opp_ang):] = [-ang]
             else:
               self.corners[0][len(self.corners[0]):] = [self.x_vis[idx]]
               self.corners[1][len(self.corners[1]):] = [self.y_vis[idx]]
               self.rays[0][len(self.rays[0]):] = [prev_point[0]]
               self.rays[1][len(self.rays[1]):] = [prev_point[1]]
+            self.opp_ang[len(self.opp_ang):] = [i]
 
         prev_point = [self.x_vis[idx], self.y_vis[idx]]
 
@@ -103,7 +106,7 @@ class InvisibleHumans(object):
       # Add point obstacle
       # print(humans[i][0])
       obstacle_msg.obstacles.append(ObstacleMsg())
-      obstacle_msg.obstacles[i].radius = 0.3
+      obstacle_msg.obstacles[i].radius = 0.07
       obstacle_msg.obstacles[i].id = i
       obstacle_msg.obstacles[i].polygon.points = [Point32()]
       obstacle_msg.obstacles[i].polygon.points[0].x = humans[i][0]
@@ -116,7 +119,7 @@ class InvisibleHumans(object):
 
       obstacle_msg.obstacles[i].velocities.twist.linear.x = humans[i][2]
       obstacle_msg.obstacles[i].velocities.twist.linear.y = humans[i][3]
-      obstacle_msg.obstacles[i].velocities.twist.linear.z = 0
+      obstacle_msg.obstacles[i].velocities.twist.linear.z = self.scan.ranges[humans[i][4]]
       obstacle_msg.obstacles[i].velocities.twist.angular.x = 0
       obstacle_msg.obstacles[i].velocities.twist.angular.y = 0
       obstacle_msg.obstacles[i].velocities.twist.angular.z = 0
@@ -140,8 +143,6 @@ class InvisibleHumans(object):
     self.centers = [[],[]]
     center_points = []
     marker_array = MarkerArray()
-    # inv_humans = PointArray()
-    # inv_humans.header.frame_id = "map"
     inv_humans = []
     m_id = 0
     if len(self.map) > 1 and len(self.corners[0])>0:
@@ -160,7 +161,7 @@ class InvisibleHumans(object):
         if math.isnan(y1):
           y1 = 7.0
 
-        l_or_r = checkPoint([-0.275,-0.055], [1.0,0.0],[x,y])
+        l_or_r = checkPoint([0.0,0.0], [1.0,0.0],[x,y])
         v_mag = np.linalg.norm([x1-x, y1-y])
         ux = (x1-x)/v_mag
         uy = (y1-y)/v_mag
@@ -193,11 +194,11 @@ class InvisibleHumans(object):
           in_pose_temp.pose.orientation.w = 1
 
           robot_pose = PoseStamped()
-          robot_pose.pose.position.x = -0.275
-          robot_pose.pose.position.y = -0.055
+          robot_pose.pose.position.x = 0.0
+          robot_pose.pose.position.y = 0.0
           robot_pose.pose.orientation.w = 1
 
-          point_transform = self.tf.lookup_transform("odom", "base_laser_link", rospy.Time(),rospy.Duration(0.001))
+          point_transform = self.tf.lookup_transform("map", "base_footprint", rospy.Time(),rospy.Duration(0.3))
           p1 = tf2_geometry_msgs.do_transform_pose(in_pose_l, point_transform)
           p2 = tf2_geometry_msgs.do_transform_pose(in_pose_r, point_transform)
           p3 = tf2_geometry_msgs.do_transform_pose(in_pose_temp, point_transform)
@@ -205,7 +206,7 @@ class InvisibleHumans(object):
           mx_l, my_l = worldTomap(p1.pose.position.x,p1.pose.position.y, self.info)
           mx_r, my_r = worldTomap(p2.pose.position.x,p2.pose.position.y, self.info)
           mx_c, my_c = worldTomap(p3.pose.position.x,p3.pose.position.y, self.info)
-          # add +0.055 to y to get the pose in map frame
+
           m_idx_l = getIndex(mx_l, my_l, self.info)
           m_idx_r = getIndex(mx_r, my_r, self.info)
           m_idx_c = getIndex(mx_c, my_c, self.info)
@@ -231,28 +232,28 @@ class InvisibleHumans(object):
         self.centers[1][len(self.centers[1]):] = [center[1]]
 
         # Filter the detections based on the 2D map using ray tracing
-        n_div = 50
-        Dx = (p4.pose.position.x - p3.pose.position.x)/n_div
-        Dy = (p4.pose.position.y - p3.pose.position.y)/n_div
-        ray_pos_x = p3.pose.position.x
-        ray_pos_y = p3.pose.position.y
-        for j in range(0,n_div):
-          ray_mx, ray_my = worldTomap(ray_pos_x,ray_pos_y, self.info)
-          if (self.map[getIndex(ray_mx, ray_my, self.info)] > 0 and self.map[getIndex(ray_mx, ray_my, self.info)] < 50) or self.map[getIndex(ray_mx, ray_my, self.info)] == -1:
-            remove_detection = True
-            break
-          ray_pos_x += Dx
-          ray_pos_y += Dy
-
-        # Remove false detections
-        if remove_detection:
-          continue
+        # n_div = 50
+        # Dx = (p4.pose.position.x - p3.pose.position.x)/n_div
+        # Dy = (p4.pose.position.y - p3.pose.position.y)/n_div
+        # ray_pos_x = p3.pose.position.x
+        # ray_pos_y = p3.pose.position.y
+        # for j in range(0,n_div):
+        #   ray_mx, ray_my = worldTomap(ray_pos_x,ray_pos_y, self.info)
+        #   if (self.map[getIndex(ray_mx, ray_my, self.info)] > 0 and self.map[getIndex(ray_mx, ray_my, self.info)] < 50) or self.map[getIndex(ray_mx, ray_my, self.info)] == -1:
+        #     remove_detection = True
+        #     break
+        #   ray_pos_x += Dx
+        #   ray_pos_y += Dy
+        #
+        # # Remove false detections
+        # if remove_detection:
+        #   continue
 
         vel_ux = p4.pose.position.x - p3.pose.position.x
         vel_uy = p4.pose.position.y - p3.pose.position.y
         vec_ang = math.atan2(vel_uy, vel_ux)
 
-        inv_humans.append([p3.pose.position.x, p3.pose.position.y, 1.5*math.cos(vec_ang), 1.5*math.sin(vec_ang)])
+        inv_humans.append([p3.pose.position.x, p3.pose.position.y, 1.5*math.cos(vec_ang), 1.5*math.sin(vec_ang), self.opp_ang[i]])
 
         # c_point = Point()
         # c_point.x = p3.pose.position.x
@@ -270,7 +271,7 @@ class InvisibleHumans(object):
         arrow.action = arrow.ADD
         arrow.pose.orientation = Quaternion(*q)
         arrow.pose.position.x = p3.pose.position.x
-        arrow.pose.position.y = p3.pose.position.y + 0.055
+        arrow.pose.position.y = p3.pose.position.y
         arrow.pose.position.z = 0.0
         t = rospy.Duration(0.1)
         arrow.lifetime = t
@@ -289,7 +290,7 @@ class InvisibleHumans(object):
         marker.action = marker.ADD
         marker.pose.orientation.w = 1
         marker.pose.position.x = p3.pose.position.x #(p1.pose.position.x + p2.pose.position.x)/2
-        marker.pose.position.y = p3.pose.position.y + 0.055 #(p1.pose.position.y + p2.pose.position.y)/2 + 0.055
+        marker.pose.position.y = p3.pose.position.y #(p1.pose.position.y + p2.pose.position.y)/2 + 0.055
         marker.pose.position.z = 0.6
         t = rospy.Duration(0.1)
         marker.lifetime = t

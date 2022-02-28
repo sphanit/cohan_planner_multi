@@ -437,7 +437,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
   }
 
    if(!stuck){
-    int n=500;
+    int n=1000;
     if(temp_dist_idx.size()>=5)
       n=100;
     for(int it=0;it<temp_dist_idx.size();it++){
@@ -598,8 +598,6 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   if((ros::Time::now()-last_door_pass_detect_).toSec()>=3.0 && door_pass){
     door_pass = false;
     isMode = 0;
-    std::cout << "Timed out" << '\n';
-    // system("rosrun dynamic_reconfigure dynparam set /move_base/HATebLocalPlannerROS \"{'max_vel_x': 0.7,'add_invisible_humans':True}\"");
   }
   // robot_pose_pub_.publish(robot_pos_msg);
   // logs+="position: x= " + std::to_string(robot_pose.pose.position.x) +", " + " y= " + std::to_string(robot_pose.pose.position.y)+", ";
@@ -687,6 +685,11 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   {
     goal_reached_ = true;
     return mbf_msgs::ExePathResult::SUCCESS;
+  }
+
+  if(fabs(std::sqrt(dx*dx+dy*dy)) < 1.0 && !backed_off){
+    door_pass = true;
+    isMode = 5;
   }
 
   // Return false if the transformed global plan is empty
@@ -838,7 +841,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
       }
     }
     else {
-      if(!stuck){
+      if(!stuck && !door_pass){
         isMode =1;
       }
       double traj_size = 10, predict_time = 5.0; // TODO: make these values configurable
@@ -871,7 +874,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
           continue;
         }
 
-        if(isMode > 1)
+        if(isMode == 2)
           continue;
 
         // transform agent plans
@@ -1044,6 +1047,9 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   }
   else if(isMode == 4){
     mode = "Approaching Pillar";
+  }
+  else if(isMode == 5){
+    mode = "Approaching Goal";
   }
   else{
       mode = "SingleBand";
@@ -1517,25 +1523,33 @@ void HATebLocalPlannerROS::updateObstacleContainerWithInvHumans()
       }
     }
 
-    if(!obstacles_.empty() && dist_idx.size()>1){
-      std::sort(dist_idx.begin(),dist_idx.end());
-      double seperation_dist = std::hypot(inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().x - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().x,
-                                          inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().y - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().y);
+    if(!obstacles_.empty() && dist_idx.size()>0){
+      if(dist_idx.size()>1){
+        std::sort(dist_idx.begin(),dist_idx.end());
+        double seperation_dist = std::hypot(inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().x - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().x,
+                                            inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().y - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().y);
 
-      if(dist_idx[0].first < 2.0  && abs(dist_idx[0].first - dist_idx[1].first)<0.1 && seperation_dist < 3.0 && !door_pass){
+        if(dist_idx[0].first < 2.0  && abs(dist_idx[0].first - dist_idx[1].first)<0.2 && seperation_dist < 3.0 && !door_pass){
 
-        if(inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().z > 1.33){
+          if(inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().z > 1.33){
+            isMode = 3;
+          }
+          else{
+            isMode = 4;
+          }
+
+          door_pass = true;
+          std::cout << "Possibility of door or narrow junction pass" << '\n';
+          last_door_pass_detect_ = ros::Time::now();
+          // system("rosrun dynamic_reconfigure dynparam set /move_base/HATebLocalPlannerROS max_vel_x 0.2");
+          // system("rosrun dynamic_reconfigure dynparam set /move_base/HATebLocalPlannerROS \"{'max_vel_x': 0.2,'add_invisible_humans':False}\"");
+        }
+      }
+      else if (dist_idx[0].first < 2.0 && inv_humans_msg_.obstacles.at(dist_idx[0].second).velocities.twist.linear.z <3.0){
+          door_pass = true;
           isMode = 3;
-        }
-        else{
-          isMode = 4;
-        }
-
-        door_pass = true;
-        std::cout << "Possibility of door or narrow junction pass" << '\n';
-        last_door_pass_detect_ = ros::Time::now();
-        // system("rosrun dynamic_reconfigure dynparam set /move_base/HATebLocalPlannerROS max_vel_x 0.2");
-        // system("rosrun dynamic_reconfigure dynparam set /move_base/HATebLocalPlannerROS \"{'max_vel_x': 0.2,'add_invisible_humans':False}\"");
+          std::cout << "It's a wall" << '\n';
+          last_door_pass_detect_ = ros::Time::now();
       }
     }
 
@@ -1933,7 +1947,7 @@ bool HATebLocalPlannerROS::transformAgentPlan(
     tf2::Transform tf_pose;
     auto agent_start_pose = agent_plan[0];
     for (auto &agent_pose : agent_plan) {
-      if(isMode>=1){
+      if(isMode>=1 && isMode<3){
         if(std::hypot(agent_pose.pose.pose.position.x - agent_start_pose.pose.pose.position.x,
                       agent_pose.pose.pose.position.y - agent_start_pose.pose.pose.position.y) > (cfg_.agent.radius)){
           unsigned int mx, my;

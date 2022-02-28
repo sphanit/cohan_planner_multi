@@ -1068,7 +1068,7 @@ void TebOptimalPlanner::AddEdgesDynamicObstacles(double weight_multiplier)
 
 void TebOptimalPlanner::AddEdgesInvisibleHumans(double weight_multiplier)
 {
-  if (cfg_->optim.weight_invisible_human==0 || weight_multiplier==0 || obstacles_==NULL || isMode == 3 || isMode == 4)
+  if (cfg_->optim.weight_invisible_human==0 || weight_multiplier==0 || obstacles_==NULL || isMode >= 3)
     return; // if weight equals zero skip adding edges!
 
   Eigen::Matrix<double,1,1> information;
@@ -1086,8 +1086,6 @@ void TebOptimalPlanner::AddEdgesInvisibleHumans(double weight_multiplier)
     {
       EdgeInvisibleHuman* inv_human_edge = new EdgeInvisibleHuman(time);
       inv_human_edge->setVertex(0,teb_.PoseVertex(i));
-      inv_human_edge->setVertex(1, teb_.PoseVertex(i + 1));
-      inv_human_edge->setVertex(2, teb_.TimeDiffVertex(i));
       inv_human_edge->setInformation(information);
       inv_human_edge->setParameters(*cfg_, robot_model_.get(), obst->get());
       optimizer_->addEdge(inv_human_edge);

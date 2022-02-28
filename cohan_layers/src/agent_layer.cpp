@@ -105,6 +105,7 @@ void AgentLayer::updateBounds(double origin_x, double origin_y, double origin_z,
     for(auto &segment : agent.segments){
       if((segment.type == DEFAULT_AGENT_PART) && !reset){
         if(!states_.states.empty() && !shutdown_){
+          if((int)states_.states[agent.track_id-1] != 0){
           AgentPoseVel agent_pose_vel;
           agent_pose_vel.header.frame_id = agents_.header.frame_id;
           agent_pose_vel.header.stamp = agents_.header.stamp;
@@ -147,6 +148,7 @@ void AgentLayer::updateBounds(double origin_x, double origin_y, double origin_z,
             continue;
           }
         }
+      }
       }
       else if(reset && !shutdown_){
         AgentPoseVel agent_pose_vel;

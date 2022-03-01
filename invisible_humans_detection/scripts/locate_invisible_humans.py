@@ -174,8 +174,8 @@ class InvisibleHumans(object):
         center = [0,0]
         hum_rad = 0.3
         remove_detection = False
-        xt = x #+ hum_rad*ux
-        yt = y #+ hum_rad*uy
+        xt = x + hum_rad*ux
+        yt = y + hum_rad*uy
 
         if(self.hum_dir[i] == 'n' and l_or_r == -1):
           l_or_r = 1
@@ -191,8 +191,9 @@ class InvisibleHumans(object):
           # center = [(xt+pt[0])/2, (yt+pt[1])/2]
           center = [pt[0], pt[1]]
           overlap = False
-          for ri in range(0,10):
-            l_pt, r_pt = get2Points([xt, yt],pt, radius = 0.1*ri*(1.5*hum_rad)) # Add 0.1 clearance for the detection
+          n_div = 2
+          for ri in range(0,n_div):
+            l_pt, r_pt = get2Points([xt, yt],pt, radius = ((ri+1)/n_div)*(1.5*hum_rad)) # Add 0.1 clearance for the detection
             in_pose_l = PoseStamped()
             in_pose_r = PoseStamped()
             in_pose_temp = PoseStamped()
@@ -225,26 +226,27 @@ class InvisibleHumans(object):
             m_idx_r = getIndex(mx_r, my_r, self.info)
             m_idx_c = getIndex(mx_c, my_c, self.info)
 
-
-            if (np.linalg.norm([xt-x,yt-y])>=np.linalg.norm([x1-x,y1-y])) or (np.linalg.norm([xt,yt])>=7.0):
-              remove_detection = True
-              break
-
-            if m_idx_c > (len(self.map) - 1) or m_idx_l > (len(self.map) - 1) or m_idx_r > (len(self.map) - 1):
-              remove_detection = True
-              break
-
             if (self.map[m_idx_l] == 0 and self.map[m_idx_r] == 0 and self.map[m_idx_c] == 0):
               continue
             else:
               overlap =  True
               break
 
-          if not overlap:
-            break
           xt = xt + alp*ux
           yt = yt + alp*uy
 
+          if (np.linalg.norm([xt-x,yt-y])>=np.linalg.norm([x1-x,y1-y])) or (np.linalg.norm([xt,yt])>=7.0):
+            remove_detection = True
+            break
+
+          if m_idx_c > (len(self.map) - 1) or m_idx_l > (len(self.map) - 1) or m_idx_r > (len(self.map) - 1):
+            remove_detection = True
+            break
+
+          if not overlap:
+            break
+          else:
+            continue
         # Remove false detections
         if remove_detection:
           continue
@@ -327,7 +329,7 @@ class InvisibleHumans(object):
         marker_array.markers.append(arrow)
       self.pub_invis_human_viz.publish(marker_array)
       self.publish_to_cohan_obstacles(inv_humans)
-      self.save_contours()
+      #self.save_contours()
       # self.pub_invis_human.publish(inv_humans)
 
   def save_contours(self):

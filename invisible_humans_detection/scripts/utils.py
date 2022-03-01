@@ -28,7 +28,8 @@ def checkPoint(O,P1,P2):
   return np.sign(np.cross(p1-o,p2-o))
 
 def get2Points(P1,P2,radius):
-  P3 = [(P1[0]+P2[0])/2, (P1[1]+P2[1])/2]
+  # P3 = [(P1[0]+P2[0])/2, (P1[1]+P2[1])/2]
+  P3 = P2
   lP = getLeftPoint(P1,P2,P3,radius)
   rP = getRightPoint(P1,P2,P3,radius)
   return lP, rP

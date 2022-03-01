@@ -14,6 +14,7 @@ from nav_msgs.msg import OccupancyGrid
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
 from tf.transformations import quaternion_from_euler
 from utils import *
+import matplotlib.pyplot as plt
 
 
 class InvisibleHumans(object):
@@ -58,10 +59,11 @@ class InvisibleHumans(object):
     self.opp_ang = []
     self.corners = [[],[]]
     self.rays = [[],[]]
+    self.hum_dir = []
     self.mid_scan = scan.ranges[len(scan.ranges)/2]
     for i in range(0,len(scan.ranges)):
       angle = scan.angle_min + (i * scan.angle_increment)
-      if abs(angle) < 1.2:
+      if abs(angle) < 1.3:
         self.x_vis[len(self.x_vis):] = [scan.ranges[i]*np.cos(angle)]
         self.y_vis[len(self.y_vis):] = [scan.ranges[i]*np.sin(angle)]
         idx = len(self.x_vis) - 1
@@ -75,12 +77,14 @@ class InvisibleHumans(object):
               self.corners[1][len(self.corners[1]):] = [prev_point[1]]
               self.rays[0][len(self.rays[0]):] = [self.x_vis[idx]]
               self.rays[1][len(self.rays[1]):] = [self.y_vis[idx]]
+              self.hum_dir[len(self.hum_dir):] = 'p'
               # self.opp_ang[len(self.opp_ang):] = [-ang]
             else:
               self.corners[0][len(self.corners[0]):] = [self.x_vis[idx]]
               self.corners[1][len(self.corners[1]):] = [self.y_vis[idx]]
               self.rays[0][len(self.rays[0]):] = [prev_point[0]]
               self.rays[1][len(self.rays[1]):] = [prev_point[1]]
+              self.hum_dir[len(self.hum_dir):] = 'n'
             self.opp_ang[len(self.opp_ang):] = [i]
 
         prev_point = [self.x_vis[idx], self.y_vis[idx]]
@@ -162,67 +166,84 @@ class InvisibleHumans(object):
           y1 = 7.0
 
         l_or_r = checkPoint([0.0,0.0], [1.0,0.0],[x,y])
+
         v_mag = np.linalg.norm([x1-x, y1-y])
         ux = (x1-x)/v_mag
         uy = (y1-y)/v_mag
-        xt = x
-        yt = y
         alp = 0.1
         center = [0,0]
         hum_rad = 0.3
         remove_detection = False
+        xt = x #+ hum_rad*ux
+        yt = y #+ hum_rad*uy
+
+        if(self.hum_dir[i] == 'n' and l_or_r == -1):
+          l_or_r = 1
+        if(self.hum_dir[i] == 'p' and l_or_r == 1):
+          l_or_r = -1
+
         while(True):
           if(l_or_r == 1):
             pt = getLeftPoint([x,y],[x1,y1],[xt,yt],dist = hum_rad)
           elif(l_or_r == -1):
             pt = getRightPoint([x,y],[x1,y1],[xt,yt],dist = hum_rad)
 
-          center = [(xt+pt[0])/2, (yt+pt[1])/2]
-          l_pt, r_pt = get2Points([xt, yt],pt, radius = hum_rad)
-          in_pose_l = PoseStamped()
-          in_pose_r = PoseStamped()
-          in_pose_temp = PoseStamped()
+          # center = [(xt+pt[0])/2, (yt+pt[1])/2]
+          center = [pt[0], pt[1]]
+          overlap = False
+          for ri in range(0,10):
+            l_pt, r_pt = get2Points([xt, yt],pt, radius = 0.1*ri*(1.5*hum_rad)) # Add 0.1 clearance for the detection
+            in_pose_l = PoseStamped()
+            in_pose_r = PoseStamped()
+            in_pose_temp = PoseStamped()
 
-          in_pose_l.pose.position.x = l_pt[0]
-          in_pose_l.pose.position.y = l_pt[1]
-          in_pose_l.pose.orientation.w = 1
-          in_pose_r.pose.position.x = r_pt[0]
-          in_pose_r.pose.position.y = r_pt[1]
-          in_pose_r.pose.orientation.w = 1
-          in_pose_temp.pose.position.x = center[0]
-          in_pose_temp.pose.position.y = center[1]
-          in_pose_temp.pose.orientation.w = 1
+            in_pose_l.pose.position.x = l_pt[0]
+            in_pose_l.pose.position.y = l_pt[1]
+            in_pose_l.pose.orientation.w = 1
+            in_pose_r.pose.position.x = r_pt[0]
+            in_pose_r.pose.position.y = r_pt[1]
+            in_pose_r.pose.orientation.w = 1
+            in_pose_temp.pose.position.x = center[0]
+            in_pose_temp.pose.position.y = center[1]
+            in_pose_temp.pose.orientation.w = 1
 
-          robot_pose = PoseStamped()
-          robot_pose.pose.position.x = 0.0
-          robot_pose.pose.position.y = 0.0
-          robot_pose.pose.orientation.w = 1
+            robot_pose = PoseStamped()
+            robot_pose.pose.position.x = 0.0
+            robot_pose.pose.position.y = 0.0
+            robot_pose.pose.orientation.w = 1
 
-          point_transform = self.tf.lookup_transform("map", "base_footprint", rospy.Time(),rospy.Duration(0.3))
-          p1 = tf2_geometry_msgs.do_transform_pose(in_pose_l, point_transform)
-          p2 = tf2_geometry_msgs.do_transform_pose(in_pose_r, point_transform)
-          p3 = tf2_geometry_msgs.do_transform_pose(in_pose_temp, point_transform)
-          p4 = tf2_geometry_msgs.do_transform_pose(robot_pose, point_transform)
-          mx_l, my_l = worldTomap(p1.pose.position.x,p1.pose.position.y, self.info)
-          mx_r, my_r = worldTomap(p2.pose.position.x,p2.pose.position.y, self.info)
-          mx_c, my_c = worldTomap(p3.pose.position.x,p3.pose.position.y, self.info)
+            point_transform = self.tf.lookup_transform("map", "base_footprint", rospy.Time(),rospy.Duration(0.3))
+            p1 = tf2_geometry_msgs.do_transform_pose(in_pose_l, point_transform)
+            p2 = tf2_geometry_msgs.do_transform_pose(in_pose_r, point_transform)
+            p3 = tf2_geometry_msgs.do_transform_pose(in_pose_temp, point_transform)
+            p4 = tf2_geometry_msgs.do_transform_pose(robot_pose, point_transform)
+            mx_l, my_l = worldTomap(p1.pose.position.x,p1.pose.position.y, self.info)
+            mx_r, my_r = worldTomap(p2.pose.position.x,p2.pose.position.y, self.info)
+            mx_c, my_c = worldTomap(p3.pose.position.x,p3.pose.position.y, self.info)
 
-          m_idx_l = getIndex(mx_l, my_l, self.info)
-          m_idx_r = getIndex(mx_r, my_r, self.info)
-          m_idx_c = getIndex(mx_c, my_c, self.info)
+            m_idx_l = getIndex(mx_l, my_l, self.info)
+            m_idx_r = getIndex(mx_r, my_r, self.info)
+            m_idx_c = getIndex(mx_c, my_c, self.info)
+
+
+            if (np.linalg.norm([xt-x,yt-y])>=np.linalg.norm([x1-x,y1-y])) or (np.linalg.norm([xt,yt])>=7.0):
+              remove_detection = True
+              break
+
+            if m_idx_c > (len(self.map) - 1) or m_idx_l > (len(self.map) - 1) or m_idx_r > (len(self.map) - 1):
+              remove_detection = True
+              break
+
+            if (self.map[m_idx_l] == 0 and self.map[m_idx_r] == 0 and self.map[m_idx_c] == 0):
+              continue
+            else:
+              overlap =  True
+              break
+
+          if not overlap:
+            break
           xt = xt + alp*ux
           yt = yt + alp*uy
-
-          if (np.linalg.norm([xt-x,yt-y])>=np.linalg.norm([x1-x,y1-y])) or (np.linalg.norm([xt,yt])>=7.0):
-            remove_detection = True
-            break
-
-          if m_idx_c > (len(self.map) - 1) or m_idx_l > (len(self.map) - 1) or m_idx_r > (len(self.map) - 1):
-            remove_detection = True
-            break
-
-          if (self.map[m_idx_l] == 0 and self.map[m_idx_r] == 0 and self.map[m_idx_c] == 0):
-            break
 
         # Remove false detections
         if remove_detection:
@@ -306,7 +327,33 @@ class InvisibleHumans(object):
         marker_array.markers.append(arrow)
       self.pub_invis_human_viz.publish(marker_array)
       self.publish_to_cohan_obstacles(inv_humans)
+      self.save_contours()
       # self.pub_invis_human.publish(inv_humans)
+
+  def save_contours(self):
+    self.drawing = True
+    # print(self.corners)
+    if(self.saved and len(self.x)>0):
+      if (len(self.x) == len(self.y)) and (len(self.corners[0])==len(self.corners[1])):
+        plt.plot(self.x, self.y)
+        # plt.plot(self.x, self.y,'k.')
+        plt.plot(self.x_vis, self.y_vis, 'r')
+        plt.plot(self.corners[0],self.corners[1], 'yo')
+        plt.plot(self.centers[0],self.centers[1], 'go')
+        plt.arrow(-0.275,-0.55,1.0,0.0, length_includes_head=True,
+            head_width=0.2, head_length=0.2)
+        plt.plot(-0.275,-0.55,'ro')
+        # plt.axis('scaled')
+        plt.title("Laser Contour")
+        plt.xlabel("x (m)")
+        plt.ylabel("y (m)")
+        plt.axis([-7.5, 7.5, -7.5, 7.5])
+        plt.draw()
+        plt.pause(0.001)
+        # plt.savefig("contour"+str(self.data_counter)+".png")
+        # self.data_counter += 1
+        plt.clf()
+    self.drawing = False
 
 
 

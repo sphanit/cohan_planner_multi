@@ -601,7 +601,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   }
   // robot_pose_pub_.publish(robot_pos_msg);
   // logs+="position: x= " + std::to_string(robot_pose.pose.position.x) +", " + " y= " + std::to_string(robot_pose.pose.position.y)+", ";
-  logs+=std::to_string(robot_pose.pose.position.x) +", " + std::to_string(robot_pose.pose.position.y);
+  // logs+=std::to_string(robot_pose.pose.position.x) +", " + std::to_string(robot_pose.pose.position.y);
   if(std::hypot(robot_pose.pose.position.x-last_robot_pose.position.x, robot_pose.pose.position.y-last_robot_pose.position.y)>0.06){
     last_position_time = ros::Time::now();
   }
@@ -643,6 +643,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   robot_vel_.angular.z = tf2::getYaw(robot_vel_tf.pose.orientation);
   auto vel_get_time = ros::Time::now() - vel_get_start_time;
   // logs+="velocity: x= " + std::to_string(robot_vel_.linear.x) +", " + " y= " + std::to_string(robot_vel_.linear.y)+", ";
+  logs+= std::to_string(robot_vel_.linear.x) +", " + std::to_string(robot_vel_.linear.y)+", ";
   // logs+="dist " + std::to_string(current_agent_dist)+", ";
 
   // prune global plan to cut off parts of the past (spatially before the robot)
@@ -1529,7 +1530,7 @@ void HATebLocalPlannerROS::updateObstacleContainerWithInvHumans()
         double seperation_dist = std::hypot(inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().x - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().x,
                                             inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().y - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().y);
 
-        if(dist_idx[0].first < 2.0  && abs(dist_idx[0].first - dist_idx[1].first)<0.2 && seperation_dist < 3.0 && !door_pass){
+        if(dist_idx[0].first < 2.0  && abs(dist_idx[0].first - dist_idx[1].first)<0.1 && seperation_dist < 3.0 && !door_pass){
 
           if(inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().z > 1.33){
             isMode = 3;

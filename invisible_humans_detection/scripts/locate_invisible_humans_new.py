@@ -170,27 +170,26 @@ class InvisibleHumans(object):
         v_mag = np.linalg.norm([x1-x, y1-y])
         ux = (x1-x)/v_mag
         uy = (y1-y)/v_mag
-        alp = 0.1
+        alp = 0.2
         center = [0,0]
         hum_rad = 0.3
         remove_detection = False
-        xt = x #+ hum_rad*ux
-        yt = y #+ hum_rad*uy
-
-        # if(self.hum_dir[i] == 'n' and l_or_r == -1):
-        #   l_or_r = 1
-        # if(self.hum_dir[i] == 'p' and l_or_r == 1):
-        #   l_or_r = -1
+        xt = x + hum_rad*ux
+        yt = y + hum_rad*uy
 
         while(True):
-          # if(l_or_r == 1):
-          #   pt = getLeftPoint([x,y],[x1,y1],[xt,yt],dist = hum_rad)
-          # elif(l_or_r == -1):
-          #   pt = getRightPoint([x,y],[x1,y1],[xt,yt],dist = hum_rad)
           if self.hum_dir[i] == 'p':
             pt = getRightPoint([x,y],[x1,y1],[xt,yt],dist = hum_rad)
           elif self.hum_dir[i] == 'n':
             pt = getLeftPoint([x,y],[x1,y1],[xt,yt],dist = hum_rad)
+
+          angle = math.atan2(pt[1], pt[0])
+          ang_idx = int((angle-self.scan.angle_min)/self.scan.angle_increment)
+
+          if self.scan.ranges[ang_idx] > np.linalg.norm(pt):
+            xt = xt + alp*ux
+            yt = yt + alp*uy
+            continue
 
           # center = [(xt+pt[0])/2, (yt+pt[1])/2]
           center = [pt[0], pt[1]]
@@ -229,6 +228,7 @@ class InvisibleHumans(object):
             m_idx_l = getIndex(mx_l, my_l, self.info)
             m_idx_r = getIndex(mx_r, my_r, self.info)
             m_idx_c = getIndex(mx_c, my_c, self.info)
+
 
             if m_idx_c > (len(self.map) - 1) or m_idx_l > (len(self.map) - 1) or m_idx_r > (len(self.map) - 1):
               remove_detection = True
@@ -284,12 +284,6 @@ class InvisibleHumans(object):
 
         inv_humans.append([p3.pose.position.x, p3.pose.position.y, 1.5*math.cos(vec_ang), 1.5*math.sin(vec_ang), self.opp_ang[i]])
 
-        # c_point = Point()
-        # c_point.x = p3.pose.position.x
-        # c_point.y = p3.pose.position.y + 0.055
-        # c_point.z = 0.0
-        # inv_humans.points.append(c_point)
-
         yaw = math.atan2(1.5*math.sin(vec_ang), 1.5*math.cos(vec_ang))
         q = quaternion_from_euler(0,0,yaw)
 
@@ -335,7 +329,7 @@ class InvisibleHumans(object):
         marker_array.markers.append(arrow)
       self.pub_invis_human_viz.publish(marker_array)
       self.publish_to_cohan_obstacles(inv_humans)
-      self.save_contours()
+      # self.save_contours()
       # self.pub_invis_human.publish(inv_humans)
 
   def save_contours(self):
@@ -346,7 +340,7 @@ class InvisibleHumans(object):
         plt.plot(self.x, self.y)
         plt.plot(self.rays[0], self.rays[1],'k.')
         plt.plot(self.x_vis, self.y_vis, 'r')
-        # plt.plot(self.corners[0],self.corners[1], 'yo')
+        plt.plot(self.corners[0],self.corners[1], 'yo')
         plt.plot(self.centers[0],self.centers[1], 'go')
         plt.arrow(-0.275,-0.55,1.0,0.0, length_includes_head=True,
             head_width=0.2, head_length=0.2)

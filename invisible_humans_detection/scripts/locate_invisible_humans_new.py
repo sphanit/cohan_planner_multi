@@ -191,8 +191,8 @@ class InvisibleHumans(object):
             yt = yt + alp*uy
             continue
 
-          # center = [(xt+pt[0])/2, (yt+pt[1])/2]
-          center = [pt[0], pt[1]]
+          center = [(xt+pt[0])/2, (yt+pt[1])/2]
+          # center = [pt[0], pt[1]]
           overlap = False
           n_div = 10
           for ri in range(0,n_div):
@@ -257,8 +257,8 @@ class InvisibleHumans(object):
         if remove_detection:
           continue
 
-        self.centers[0][len(self.centers[0]):] = [center[0]]
-        self.centers[1][len(self.centers[1]):] = [center[1]]
+        self.centers[0][len(self.centers[0]):] = [pt[0]]
+        self.centers[1][len(self.centers[1]):] = [pt[1]]
 
         # Filter the detections based on the 2D map using ray tracing
         # n_div = 50

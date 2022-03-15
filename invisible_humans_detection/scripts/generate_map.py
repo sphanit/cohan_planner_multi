@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 def read_map(name):
     map = open(name+'.pgm','rb')

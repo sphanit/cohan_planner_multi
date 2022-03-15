@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Brief: Some utility functions
 # Author: Phani Teja Singamaneni
 

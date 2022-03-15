@@ -94,6 +94,9 @@ namespace invisible_humans_detection
     Eigen::Vector2d robot_vec{cos(theta),sin(theta)};
 
     for(int i=0;i<samples;i++){
+      if(map_.data.empty())
+        continue;
+
       double ray_ = map_scan_.range_min;
       // std::cout << "ray_vec _x" <<ray_vec.x() << '\n';
       Eigen::Vector2d r_dir{robot_vec.x()*cos(ang)-robot_vec.y()*sin(ang),

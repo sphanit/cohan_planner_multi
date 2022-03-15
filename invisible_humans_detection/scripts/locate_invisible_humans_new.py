@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Brief: Node for detecting and publishing invisible humans
 # Author: Phani Teja Singamaneni
 
@@ -60,7 +60,7 @@ class InvisibleHumans(object):
     self.corners = [[],[]]
     self.rays = [[],[]]
     self.hum_dir = []
-    self.mid_scan = scan.ranges[len(scan.ranges)/2]
+    self.mid_scan = scan.ranges[int(len(scan.ranges)/2)]
     for i in range(0,len(scan.ranges)):
       angle = scan.angle_min + (i * scan.angle_increment)
       if abs(angle) < 1.3:

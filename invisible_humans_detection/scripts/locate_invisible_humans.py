@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Brief: Node for detecting and publishing invisible humans
 # Author: Phani Teja Singamaneni
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Brief: This node subscribes to /tracked_agents and publishes the predicted goal to agents based on their trajectory
 # Author: Phani Teja Singamaneni

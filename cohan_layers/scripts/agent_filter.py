@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Brief: This node filters the /tracked_agents from the laser data and publishes the filtered laser scan used for hateb
 # Author: Phani Teja Singamaneni

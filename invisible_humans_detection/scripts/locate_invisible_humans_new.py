@@ -14,7 +14,7 @@ from nav_msgs.msg import OccupancyGrid
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
 from tf.transformations import quaternion_from_euler
 from utils import *
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 class InvisibleHumans(object):
@@ -104,7 +104,7 @@ class InvisibleHumans(object):
 
     obstacle_msg = ObstacleArrayMsg()
     obstacle_msg.header.stamp = rospy.Time.now()
-    obstacle_msg.header.frame_id = "odom" # CHANGE HERE: odom/map
+    obstacle_msg.header.frame_id = "map" # CHANGE HERE: odom/map
 
     for i in range(0,len(humans)):
       # Add point obstacle
@@ -331,7 +331,7 @@ class InvisibleHumans(object):
       self.publish_to_cohan_obstacles(inv_humans)
       # self.save_contours()
       # self.pub_invis_human.publish(inv_humans)
-
+'''
   def save_contours(self):
     self.drawing = True
     # print(self.corners)
@@ -356,7 +356,7 @@ class InvisibleHumans(object):
         # self.data_counter += 1
         plt.clf()
     self.drawing = False
-
+'''
 
 
 if __name__ == '__main__':

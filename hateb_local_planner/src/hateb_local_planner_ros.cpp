@@ -1525,6 +1525,7 @@ void HATebLocalPlannerROS::updateObstacleContainerWithInvHumans()
     }
 
     if(!obstacles_.empty() && dist_idx.size()>0){
+          std::cout << "dist_idx[0].first" <<dist_idx[0].first<< '\n';
       if(dist_idx.size()>1){
         std::sort(dist_idx.begin(),dist_idx.end());
         double seperation_dist = std::hypot(inv_humans_msg_.obstacles.at(dist_idx[0].second).polygon.points.front().x - inv_humans_msg_.obstacles.at(dist_idx[1].second).polygon.points.front().x,

@@ -35,7 +35,7 @@
  * Author: Phani Teja Singamaneni (email:ptsingaman@laas.fr)
  *********************************************************************/
  #include <invisible_humans_detection/map_scanner.h>
- #include <angles/angles.h>
+ //#include <angles/angles.h>
 
 
 namespace invisible_humans_detection
@@ -94,8 +94,10 @@ namespace invisible_humans_detection
     Eigen::Vector2d robot_vec{cos(theta),sin(theta)};
 
     for(int i=0;i<samples;i++){
+      if(map_.data.empty()){
+      continue;
+      }
       double ray_ = map_scan_.range_min;
-      // std::cout << "ray_vec _x" <<ray_vec.x() << '\n';
       Eigen::Vector2d r_dir{robot_vec.x()*cos(ang)-robot_vec.y()*sin(ang),
                             +robot_vec.x()*sin(ang)+robot_vec.y()*cos(ang)};
 
@@ -128,6 +130,7 @@ namespace invisible_humans_detection
 
   void MapScanner::getMap(const nav_msgs::OccupancyGrid &grid){
     map_ = grid;
+    std::cout << map_.data.size() << "\n";
     origin_x_ = map_.info.origin.position.x;
     origin_y_ = map_.info.origin.position.y;
     resolution_ = map_.info.resolution;

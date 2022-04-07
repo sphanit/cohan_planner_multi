@@ -251,6 +251,7 @@ bool TebOptimalPlanner::optimizeTEB(int iterations_innerloop, int iterations_out
         clearGraph();
         return false;
     }
+    std::cout << "teb_.poses(1) before"  <<teb_.Pose(1)<< '\n';
     success = optimizeGraph(iterations_innerloop, false);
     if (!success)
     {
@@ -258,6 +259,7 @@ bool TebOptimalPlanner::optimizeTEB(int iterations_innerloop, int iterations_out
         return false;
     }
     optimized_ = true;
+    std::cout << "teb_.poses(1) after"  <<teb_.Pose(1)<< '\n';
 
     if (compute_cost_afterwards && i==iterations_outerloop-1) // compute cost vec only in the last iteration
       computeCurrentCost(obst_cost_scale, viapoint_cost_scale, alternative_time_cost, op_costs);

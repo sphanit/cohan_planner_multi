@@ -8,7 +8,7 @@ import tf2_ros
 import math
 import tf2_geometry_msgs
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import PoseStamped, Point, Point32, QuaternionStamped, Quaternion
+from geometry_msgs.msg import PoseStamped, Point, Point32, QuaternionStamped, Quaternion, PoseArray
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import OccupancyGrid
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
@@ -35,8 +35,9 @@ class InvisibleHumans(object):
 
     rospy.Subscriber('/map_scanner/map_scan', LaserScan, self.laserCB)
     rospy.Subscriber("/map", OccupancyGrid, self.mapCB)
-    self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 100)
-    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size = 100)
+    self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 1)
+    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size = 1)
+    self.pub_invis_human_corners = rospy.Publisher('invisible_humans_corners', PoseArray, queue_size = 1)
 
 
     #Intialize tf2 transform listener
@@ -145,10 +146,14 @@ class InvisibleHumans(object):
     #   z: 0.0
     #   w: 1.0
     self.centers = [[],[]]
-    center_points = []
+    corner_array = PoseArray()
+    corner_array.header.stamp = rospy.Time.now()
+    corner_array.header.frame_id = "map"
     marker_array = MarkerArray()
     inv_humans = []
     m_id = 0
+    point_transform = self.tf.lookup_transform("map", "base_footprint", rospy.Time(0),rospy.Duration(0.3))
+
     if len(self.map) > 1 and len(self.corners[0])>0:
       for i in range(0,len(self.corners[0])):
         x = self.corners[0][i]
@@ -216,7 +221,6 @@ class InvisibleHumans(object):
             robot_pose.pose.position.y = 0.0
             robot_pose.pose.orientation.w = 1
 
-            point_transform = self.tf.lookup_transform("map", "base_footprint", rospy.Time(),rospy.Duration(0.3))
             p1 = tf2_geometry_msgs.do_transform_pose(in_pose_l, point_transform)
             p2 = tf2_geometry_msgs.do_transform_pose(in_pose_r, point_transform)
             p3 = tf2_geometry_msgs.do_transform_pose(in_pose_temp, point_transform)
@@ -257,9 +261,18 @@ class InvisibleHumans(object):
         if remove_detection:
           continue
 
+
         self.centers[0][len(self.centers[0]):] = [pt[0]]
         self.centers[1][len(self.centers[1]):] = [pt[1]]
 
+
+        _c_pose = PoseStamped()
+        _c_pose.header.frame_id = "base_footprint"
+        _c_pose.pose.position.x = x
+        _c_pose.pose.position.y = y
+        _c_pose.pose.orientation.w = 1
+        corner_pos = tf2_geometry_msgs.do_transform_pose(_c_pose, point_transform)
+        corner_array.poses.append(corner_pos.pose)
         # Filter the detections based on the 2D map using ray tracing
         # n_div = 50
         # Dx = (p4.pose.position.x - p3.pose.position.x)/n_div
@@ -329,6 +342,7 @@ class InvisibleHumans(object):
         marker_array.markers.append(arrow)
       self.pub_invis_human_viz.publish(marker_array)
       self.publish_to_cohan_obstacles(inv_humans)
+      self.pub_invis_human_corners.publish(corner_array)
       # self.save_contours()
       # self.pub_invis_human.publish(inv_humans)
 '''

@@ -158,7 +158,7 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
     else{
       double rad;
       if(agents_.agents[i].type==1){
-        rad = agent_radius + 0.3;
+        rad = agent_radius + 0.45;
       }
       else{
         rad = robot_radius;

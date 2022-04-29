@@ -357,6 +357,7 @@ void HATebConfig::reconfigure(HATebLocalPlannerReconfigureConfig& cfg)
   // GoalTolerance
   goal_tolerance.xy_goal_tolerance = cfg.xy_goal_tolerance;
   goal_tolerance.yaw_goal_tolerance = cfg.yaw_goal_tolerance;
+  goal_tolerance.complete_global_plan = cfg.complete_global_plan;
   goal_tolerance.free_goal_vel = cfg.free_goal_vel;
 
   // Obstacles

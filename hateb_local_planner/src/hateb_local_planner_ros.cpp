@@ -510,7 +510,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
     for(int i=0;i<visible_agent_ids.size() && i<hum_xpos.size();i++){
       geometry_msgs::Point v1,v2,v3,v4;
       auto idx = visible_agent_ids[i]-1;
-      auto agent_radius = agents_radii[idx] + 0.2;
+      auto agent_radius = agents_radii[idx];
       v1.x = hum_xpos[idx]-agent_radius,v1.y=hum_ypos[idx]-agent_radius,v1.z=0.0;
       v2.x = hum_xpos[idx]-agent_radius,v2.y=hum_ypos[idx]+agent_radius,v2.z=0.0;
       v3.x = hum_xpos[idx]+agent_radius,v3.y=hum_ypos[idx]+agent_radius,v3.z=0.0;

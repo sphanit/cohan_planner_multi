@@ -375,8 +375,8 @@ public:
     robot.is_real = false;
 
     // Agent
-    agent.radius = 0.2;
-    agent.robot_radius = 0.4;
+    agent.radius = 0.35;
+    agent.robot_radius = 0.47;
     agent.max_vel_x = 1.3;
     agent.nominal_vel_x = 1.1;
     agent.max_vel_y = 0.4;

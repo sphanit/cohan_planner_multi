@@ -1083,11 +1083,10 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   double dt_resize=cfg_.trajectory.dt_ref;
   double dt_hyst_resize=cfg_.trajectory.dt_hysteresis;
 
-  // Uncomment the below lines of code for intermediate band tightness change
-  // if(isDistunderThreshold && isMode==0){
-  //     dt_resize = 0.2;
-  //     dt_hyst_resize = 0.1;
-  //   }
+  if(isMode==0 or isMode==1){
+    dt_resize = 0.25;
+    dt_hyst_resize = 0.025;
+  }
 
   bool success = planner_->plan(transformed_plan, &robot_vel_, cfg_.goal_tolerance.free_goal_vel, &transformed_agent_plan_vel_map, &op_costs, dt_resize, dt_hyst_resize, isMode);
 

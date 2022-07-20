@@ -26,4 +26,4 @@ def read_map(name):
     new_map.close()
     map.close()
 
-read_map('../maps/adream_RDC_complet')
+read_map('../maps/bremen_kitchen')

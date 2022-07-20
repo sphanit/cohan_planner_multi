@@ -12,7 +12,7 @@ from geometry_msgs.msg import PoseStamped, Point, Point32, QuaternionStamped, Qu
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import OccupancyGrid
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
-from tf.transformations import quaternion_from_euler
+from transformations import quaternion_from_euler
 from utils import *
 #import matplotlib.pyplot as plt
 
@@ -64,7 +64,7 @@ class InvisibleHumans(object):
     self.mid_scan = scan.ranges[len(scan.ranges)/2]
     for i in range(0,len(scan.ranges)):
       angle = scan.angle_min + (i * scan.angle_increment)
-      if abs(angle) < 1.3:
+      if abs(angle) < 1.57:
         self.x_vis[len(self.x_vis):] = [scan.ranges[i]*np.cos(angle)]
         self.y_vis[len(self.y_vis):] = [scan.ranges[i]*np.sin(angle)]
         idx = len(self.x_vis) - 1

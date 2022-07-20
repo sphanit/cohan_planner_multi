@@ -1,4 +1,4 @@
-image: laas_adream_inv_circles.pgm
+image: laas_adream_inv.pgm
 resolution: 0.050000
 origin: [-5.000000, -10.000000, 0.000000]
 negate: 0

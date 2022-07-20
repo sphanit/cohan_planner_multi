@@ -51,7 +51,7 @@ class FakeTFBroadcaster(object):
       idx = random.randrange(0,n)
       center = self.map['centers'][idx]
       radius = math.sqrt(random.random())*(self.map['radii'][idx]/2) #Divided by 2 because diameter
-      theta = random.uniform(-math.pi, math.pi)
+      theta = random.uniform(0, 2*math.pi)
 
       return center, radius, theta
 

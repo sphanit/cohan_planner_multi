@@ -130,7 +130,7 @@ namespace invisible_humans_detection
 
   void MapScanner::getMap(const nav_msgs::OccupancyGrid &grid){
     map_ = grid;
-    std::cout << map_.data.size() << "\n";
+    // std::cout << map_.data.size() << "\n";
     origin_x_ = map_.info.origin.position.x;
     origin_y_ = map_.info.origin.position.y;
     resolution_ = map_.info.resolution;

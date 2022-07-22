@@ -106,7 +106,7 @@ class FakeTFBroadcaster(object):
       x = self.t.transform.translation.x
       y = self.t.transform.translation.y
       self.inv_humans = msg
-      i = 0 
+      i = 0
       for pose in msg.poses:
         dist = np.linalg.norm([pose.position.x-x,pose.position.y-y])
         self.inv_humans_info.append([dist,i])
@@ -116,12 +116,15 @@ class FakeTFBroadcaster(object):
       self.last_time = rospy.Time.now()
       self.check_passages()
       # print("new",self.inv_humans_info)
-    
+
     def check_passages(self):
       # print(len(self.inv_humans_info))
       found = -1
+      dist1 = -999
+      dist2 = -777
       if len(self.inv_humans_info)>0:
         # print(self.inv_humans.poses[self.inv_humans_info[0][1]].orientation.z)
+        dist1 = self.inv_humans_info[0][0]
         if len(self.inv_humans_info)>1:
           i1= self.inv_humans_info[0][1]
           i2= self.inv_humans_info[1][1]
@@ -135,9 +138,10 @@ class FakeTFBroadcaster(object):
               # print("It's a door/passage")
               found = 0
             else:
-              found = 1 
+              found = 1
               # print("It's a  pillar")
-        if found == -1 and self.inv_humans_info[0][0] < 2.0 and self.inv_humans.poses[self.inv_humans_info[0][1]].orientation.z < 3.0:
+        dist2 = self.inv_humans.poses[self.inv_humans_info[0][1]].orientation.z
+        if found == -1 and self.inv_humans_info[0][0] < 2.0 and 0.5 <= self.inv_humans.poses[self.inv_humans_info[0][1]].orientation.z <=7.0:
           # print("It's a wall passage")
           found = 2
           detect_pose = [self.inv_humans.poses[self.inv_humans_info[0][1]].position.x, self.inv_humans.poses[self.inv_humans_info[0][1]].position.y]
@@ -157,13 +161,29 @@ class FakeTFBroadcaster(object):
         marker.lifetime = rospy.Duration(0.2)
         # marker.color.r = 1.0
         if found == 0:
-          marker.text =  "Door/Passage"
+          marker.text =  "Door/Passage " + str(dist1)+ " "+ str(dist2)
         elif found == 1:
-          marker.text = "Pillar"
+          marker.text = "Pillar "+ str(dist1)+ " "+ str(dist2)
         elif found == 2:
-          marker.text = "Wall on the other side"
+          marker.text = "Wall on the other side "+ str(dist1)+ " "+ str(dist2)
         else:
-          marker.text = "No info"
+          marker.text = "No info "+ str(dist1)+ " "+ str(dist2)
+        self.pub_passage.publish(marker)
+      else:
+        marker = Marker()
+        m_id = 0
+        marker.header.frame_id = "map"
+        marker.id = m_id
+        marker.type = marker.TEXT_VIEW_FACING
+        marker.action = marker.ADD
+        marker.pose.orientation.w = 1.0
+        marker.pose.position.x = 2
+        marker.pose.position.y = 2
+        marker.pose.position.z = 0.0
+        marker.scale.z = 0.4
+        marker.color.a = 1.0
+        marker.lifetime = rospy.Duration(0.2)
+        marker.text = "Dist = "+str(dist1) + " "+ str(dist2)
         self.pub_passage.publish(marker)
 
 
@@ -189,26 +209,42 @@ def update_map(path):
 
 
 if __name__ == '__main__':
+    map_name = 'bremen'
+    passage_detect = True
+
     sg.theme('DarkAmber')   # Add a touch of color
     # All the stuff inside your window.
-    layout = [  [sg.Text('False Positives'), sg.InputText(), sg.Text('Overlapping'), sg.InputText()],
+    if not passage_detect:
+      layout = [  [sg.Text('False Positives'), sg.InputText(), sg.Text('Overlapping'), sg.InputText()],
                 [sg.Text('Total'), sg.InputText()],
+                [sg.Button('AddData'),sg.Text('0', size=(50,1), key='-mytext-')],
+                [sg.Button('NextPose'), sg.Button('CenterPose'), sg.Button('Rotate')],
+                [sg.Button('NextMap'), sg.Button('Save'), sg.Button('Exit')]
+             ]
+    else:
+      layout = [[sg.Text('True Detection'), sg.InputText(), sg.Text('False Detection'), sg.InputText()],
+                [sg.Text('No Detect (Range Limit)'), sg.InputText(), sg.Text('No Detect (Within Range)'), sg.InputText()],
                 [sg.Button('AddData'),sg.Text('0', size=(50,1), key='-mytext-')],
                 [sg.Button('NextPose'), sg.Button('CenterPose'), sg.Button('Rotate')],
                 [sg.Button('NextMap'), sg.Button('Save'), sg.Button('Exit')]
              ]
     # Create the Window
     window = sg.Window('Get Data', layout)
-    map_name = 'bremen'
 
     rospy.init_node('fake_robot_broadcaster')
     path = os.path.abspath(os.path.dirname(__file__))
     tfb = FakeTFBroadcaster(os.path.join(path, '../maps/areas/'), map_name)
     map_updated = False
     data = dict()
-    data['false_postives'] = []
-    data['overlap'] = []
-    data['total'] = []
+    if not passage_detect:
+      data['false_postives'] = []
+      data['overlap'] = []
+      data['total'] = []
+    else:
+      data['t_detect'] = []
+      data['f_detect'] = []
+      data['no_detect_lim'] = []
+      data['no_detect'] = []
     while not rospy.is_shutdown():
       tfb.t.header.stamp = rospy.Time.now()
       tfm = tf2_msgs.msg.TFMessage([tfb.t])
@@ -217,13 +253,20 @@ if __name__ == '__main__':
       if event == sg.WIN_CLOSED or event == 'Exit': # if user closes window or clicks cancel
           break
       if event == 'AddData':
-        data['false_postives'].append(float(values[0]))
-        data['overlap'].append(float(values[1]))
-        data['total'].append(float(values[2]))
-        window['-mytext-'].update(str(len(data['total'])))
+        if not passage_detect:
+          data['false_postives'].append(float(values[0]))
+          data['overlap'].append(float(values[1]))
+          data['total'].append(float(values[2]))
+          window['-mytext-'].update(str(len(data['total'])))
+        else:
+          data['t_detect'].append(float(values[0]))
+          data['f_detect'].append(float(values[1]))
+          data['no_detect_lim'].append(float(values[2]))
+          data['no_detect'].append(float(values[3]))
+          window['-mytext-'].update(str(len(data['t_detect'])))
       if event == 'NextPose':
         if not map_updated:
-          tfb.update_pose(passage=True)
+          tfb.update_pose(passage=passage_detect)
         else:
           tfb.update_pose_within_limits()
 

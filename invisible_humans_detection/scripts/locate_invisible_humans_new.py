@@ -316,8 +316,8 @@ class InvisibleHumans(object):
         arrow.pose.position.y = p3.pose.position.y
         _inv_pose.pose.position.x = p3.pose.position.x
         _inv_pose.pose.position.y = p3.pose.position.y
-        _inv_pose.pose.position.z = self.opp_ang[i]
-        _inv_pose.pose.orientation.z = self.mid_scan
+        _inv_pose.pose.position.z = self.mid_scan
+        _inv_pose.pose.orientation.z = self.scan.ranges[self.opp_ang[i]]
         arrow.pose.position.z = 0.0
         t = rospy.Duration(0.1)
         arrow.lifetime = t

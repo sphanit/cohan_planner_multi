@@ -14,17 +14,20 @@ from visualization_msgs.msg import Marker
 from transformations import quaternion_from_euler
 import PySimpleGUI as sg
 from map_server.srv import LoadMap
-random.seed(3407)
+# random.seed(3407)
 
 class FakeTFBroadcaster(object):
 
-    def __init__(self, map):
+    def __init__(self, map_path, map_name):
         self.pub_tf = rospy.Publisher("/tf", tf2_msgs.msg.TFMessage, queue_size=1)
         self.pub_passage = rospy.Publisher("/passage_detection", Marker, queue_size=1)
         rospy.Subscriber("map_metadata", MapMetaData, self.update_map_limits)
         rospy.Subscriber("invisible_humans", geometry_msgs.msg.PoseArray, self.invHumansCB)
-        with open(map,'r') as file:
+        with open(map_path+map_name+'.yaml','r') as file:
           self.map = yaml.safe_load(file)
+        with open(map_path+'passages.yaml','r') as file:
+          dat = yaml.safe_load(file)
+          self.psg_info = dat[map_name]
 
         self.x_lim = 0
         self.y_lim = 0
@@ -45,31 +48,45 @@ class FakeTFBroadcaster(object):
         self.t.transform.rotation.z = 0.0
         self.t.transform.rotation.w = 1.0
 
-    def update_pose(self, center = None, rotate = None):
+    def update_pose(self, center = None, rotate = None, passage = None):
       if not center and not rotate:
-        c, r, theta = self.pick_random_pose()
+        c, r, theta, index = self.pick_random_pose(passage)
         self.t.transform.translation.x = c[0]+r*math.cos(theta)
         self.t.transform.translation.y = c[1]+r*math.sin(theta)
       elif center:
         self.t.transform.translation.x = self.x_lim/2
         self.t.transform.translation.y = self.y_lim/2
-      # print(c[0]+r*math.cos(theta), c[1]+r*math.sin(theta))
 
-      q = quaternion_from_euler(0,0,random.uniform(-math.pi, math.pi))
+      # print(c[0]+r*math.cos(theta), c[1]+r*math.sin(theta))
+      if passage:
+        q = quaternion_from_euler(0,0,math.radians(int(self.psg_info['ang'][index])))
+      else:
+        q = quaternion_from_euler(0,0,random.uniform(-math.pi, math.pi))
       # print(q)
       self.t.transform.rotation.x = q[0]
       self.t.transform.rotation.y = q[1]
       self.t.transform.rotation.z = q[2]
       self.t.transform.rotation.w = q[3]
 
-    def pick_random_pose(self):
-      n = len(self.map['radii']) # Not radius but diameter
-      idx = random.randrange(0,n)
-      center = self.map['centers'][idx]
-      radius = math.sqrt(random.random())*(self.map['radii'][idx]/2) #Divided by 2 because diameter
-      theta = random.uniform(0, 2*math.pi)
+    def pick_random_pose(self, passage = None):
+      index = -1
+      if not passage:
+        n = len(self.map['radii']) # Not radius but diameter
+        idx = random.randrange(0,n)
+        center = self.map['centers'][idx]
+        radius = math.sqrt(random.random())*(self.map['radii'][idx]/2) #Divided by 2 because diameter
+        theta = random.uniform(0, 2*math.pi)
+        index = idx
+      else:
+        n = len(self.psg_info['idx'])
+        i = random.randrange(0,n)
+        center = self.map['centers'][self.psg_info['idx'][i]]
+        radius = math.sqrt(random.random())*(self.map['radii'][self.psg_info['idx'][i]]/2) #Divided by 2 because diameter
+        # theta = math.radians(self.psg_info['ang'][i])
+        theta = random.uniform(0, 2*math.pi)
+        index = i
 
-      return center, radius, theta
+      return center, radius, theta, index
 
     def update_map_limits(self, msg):
       self.x_lim = msg.width* msg.resolution
@@ -104,6 +121,7 @@ class FakeTFBroadcaster(object):
       # print(len(self.inv_humans_info))
       found = -1
       if len(self.inv_humans_info)>0:
+        # print(self.inv_humans.poses[self.inv_humans_info[0][1]].orientation.z)
         if len(self.inv_humans_info)>1:
           i1= self.inv_humans_info[0][1]
           i2= self.inv_humans_info[1][1]
@@ -119,7 +137,7 @@ class FakeTFBroadcaster(object):
             else:
               found = 1 
               # print("It's a  pillar")
-        elif self.inv_humans_info[0][0] < 2.0 and self.inv_humans.poses[self.inv_humans_info[0][1]].orientation.z < 3.0:
+        if found == -1 and self.inv_humans_info[0][0] < 2.0 and self.inv_humans.poses[self.inv_humans_info[0][1]].orientation.z < 3.0:
           # print("It's a wall passage")
           found = 2
           detect_pose = [self.inv_humans.poses[self.inv_humans_info[0][1]].position.x, self.inv_humans.poses[self.inv_humans_info[0][1]].position.y]
@@ -147,11 +165,6 @@ class FakeTFBroadcaster(object):
         else:
           marker.text = "No info"
         self.pub_passage.publish(marker)
-
-
-
-
-
 
 
 def generate_random_map(path):
@@ -186,10 +199,11 @@ if __name__ == '__main__':
              ]
     # Create the Window
     window = sg.Window('Get Data', layout)
+    map_name = 'bremen'
 
     rospy.init_node('fake_robot_broadcaster')
     path = os.path.abspath(os.path.dirname(__file__))
-    tfb = FakeTFBroadcaster(os.path.join(path, '../maps/areas/bremen_kitchen.yaml'))
+    tfb = FakeTFBroadcaster(os.path.join(path, '../maps/areas/'), map_name)
     map_updated = False
     data = dict()
     data['false_postives'] = []
@@ -209,7 +223,7 @@ if __name__ == '__main__':
         window['-mytext-'].update(str(len(data['total'])))
       if event == 'NextPose':
         if not map_updated:
-          tfb.update_pose()
+          tfb.update_pose(passage=True)
         else:
           tfb.update_pose_within_limits()
 

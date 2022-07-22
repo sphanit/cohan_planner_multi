@@ -8,7 +8,7 @@ import tf2_ros
 import math
 import tf2_geometry_msgs
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import PoseStamped, Point, Point32, QuaternionStamped, Quaternion, PoseArray
+from geometry_msgs.msg import PoseStamped, Point32, Quaternion, PoseArray
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import OccupancyGrid
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
@@ -38,6 +38,7 @@ class InvisibleHumans(object):
     self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 1)
     self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size = 1)
     self.pub_invis_human_corners = rospy.Publisher('invisible_humans_corners', PoseArray, queue_size = 1)
+    self.pub_invis_humans_pos_ = rospy.Publisher('invisible_humans', PoseArray, queue_size = 1)
 
 
     #Intialize tf2 transform listener
@@ -149,6 +150,9 @@ class InvisibleHumans(object):
     corner_array = PoseArray()
     corner_array.header.stamp = rospy.Time.now()
     corner_array.header.frame_id = "map"
+    inv_array = PoseArray()
+    inv_array.header.stamp = rospy.Time.now()
+    inv_array.header.frame_id = "map"
     marker_array = MarkerArray()
     inv_humans = []
     m_id = 0
@@ -299,6 +303,7 @@ class InvisibleHumans(object):
 
         yaw = math.atan2(1.5*math.sin(vec_ang), 1.5*math.cos(vec_ang))
         q = quaternion_from_euler(0,0,yaw)
+        _inv_pose = PoseStamped()
 
         arrow = Marker()
         arrow.header.frame_id = "map"
@@ -306,8 +311,13 @@ class InvisibleHumans(object):
         arrow.type = arrow.ARROW
         arrow.action = arrow.ADD
         arrow.pose.orientation = Quaternion(*q)
+        _inv_pose.pose.orientation = Quaternion(*q)
         arrow.pose.position.x = p3.pose.position.x
         arrow.pose.position.y = p3.pose.position.y
+        _inv_pose.pose.position.x = p3.pose.position.x
+        _inv_pose.pose.position.y = p3.pose.position.y
+        _inv_pose.pose.position.z = self.opp_ang[i]
+        _inv_pose.pose.orientation.z = self.mid_scan
         arrow.pose.position.z = 0.0
         t = rospy.Duration(0.1)
         arrow.lifetime = t
@@ -340,9 +350,11 @@ class InvisibleHumans(object):
 
         marker_array.markers.append(marker)
         marker_array.markers.append(arrow)
+        inv_array.poses.append(_inv_pose.pose)
       self.pub_invis_human_viz.publish(marker_array)
       self.publish_to_cohan_obstacles(inv_humans)
-      self.pub_invis_human_corners.publish(corner_array)
+      # self.pub_invis_human_corners.publish(corner_array)
+      self.pub_invis_humans_pos_.publish(inv_array)
       # self.save_contours()
       # self.pub_invis_human.publish(inv_humans)
 '''

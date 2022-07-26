@@ -222,6 +222,8 @@ void HATebConfig::loadRosParamFromNodeHandle(const ros::NodeHandle& nh)
             hateb.use_external_prediction);
   nh.param("predict_agent_behind_robot", hateb.predict_agent_behind_robot,
             hateb.predict_agent_behind_robot);
+  nh.param("enable_backoff", hateb.enable_backoff,
+            hateb.enable_backoff);
   nh.param("predict_agent_goal", hateb.predict_agent_goal,
             hateb.predict_agent_goal);
   nh.param("min_agent_robot_dist", hateb.min_agent_robot_dist,
@@ -360,6 +362,7 @@ void HATebConfig::reconfigure(HATebLocalPlannerReconfigureConfig& cfg)
   // GoalTolerance
   goal_tolerance.xy_goal_tolerance = cfg.xy_goal_tolerance;
   goal_tolerance.yaw_goal_tolerance = cfg.yaw_goal_tolerance;
+  goal_tolerance.complete_global_plan = cfg.complete_global_plan;
   goal_tolerance.free_goal_vel = cfg.free_goal_vel;
 
   // Obstacles
@@ -439,6 +442,7 @@ void HATebConfig::reconfigure(HATebLocalPlannerReconfigureConfig& cfg)
   hateb.use_agent_elastic_vel = cfg.use_agent_elastic_vel;
   hateb.use_external_prediction = cfg.use_external_prediction;
   hateb.predict_agent_behind_robot = cfg.predict_agent_behind_robot;
+  hateb.enable_backoff = cfg.enable_backoff;
   hateb.predict_agent_goal = cfg.predict_agent_goal;
   hateb.min_agent_robot_dist = cfg.min_agent_robot_dist;
   hateb.min_agent_agent_dist = cfg.min_agent_agent_dist;

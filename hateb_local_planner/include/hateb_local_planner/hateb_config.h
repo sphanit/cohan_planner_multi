@@ -235,6 +235,7 @@ public:
     bool use_external_prediction;
     bool predict_agent_behind_robot;
     bool predict_agent_goal;
+    bool enable_backoff;
     double min_agent_robot_dist;
     double min_agent_agent_dist;
     double ttc_threshold;
@@ -479,6 +480,7 @@ public:
     hateb.use_external_prediction = false;
     hateb.predict_agent_behind_robot = false;
     hateb.predict_agent_goal = false;
+    hateb.enable_backoff = false;
     hateb.ttc_threshold = 5.0;
     hateb.ttcplus_threshold = 5.0;
     hateb.ttcplus_timer = 5.0;

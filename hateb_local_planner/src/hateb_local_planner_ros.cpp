@@ -618,7 +618,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
         change_mode++;
         isMode = 1;
 
-        if(change_mode>20){
+        if(change_mode>20 && cfg_.hateb.enable_backoff){
           if(!stuck)
             ROS_INFO("I am stuck");
           stuck = true;

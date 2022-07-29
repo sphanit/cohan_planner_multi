@@ -1548,6 +1548,7 @@ void HATebLocalPlannerROS::updateObstacleContainerWithInvHumans()
           // system("rosrun dynamic_reconfigure dynparam set /move_base/HATebLocalPlannerROS \"{'max_vel_x': 0.2,'add_invisible_humans':False}\"");
         }
       }
+      //TODO: Update this detection. Difference bewteen inv human and the laser scan hit point should be more than certain threshold
       else if (dist_idx[0].first < 2.0 && inv_humans_msg_.obstacles.at(dist_idx[0].second).velocities.twist.linear.z <3.0){
           door_pass = true;
           isMode = 3;

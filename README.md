@@ -1,3 +1,7 @@
+# Noetic Devel
+
+Please checkout to noetic_devel for using the system in Ubuntu 20.04
+
 # CoHAN Planner Multi
 
 The extension of the [CoHAN Planner](https://github.com/sphanit/CoHAN_Planner) that allows the simultaneous running of multiple planners with namespace support. More details about the CoHAN Planner can be found [here](https://github.com/sphanit/CoHAN_Planner/blob/master/README.md).

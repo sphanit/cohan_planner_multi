@@ -1,6 +1,6 @@
 # Noetic Devel
 
-Please checkout to noetic_devel for using the system in Ubuntu 20.04
+Please checkout to noetic-devel for using the system in Ubuntu 20.04
 
 # CoHAN Planner Multi
 

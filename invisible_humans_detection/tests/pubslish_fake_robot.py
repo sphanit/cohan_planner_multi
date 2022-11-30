@@ -10,7 +10,7 @@ import yaml
 import os
 import numpy as np
 from nav_msgs.msg import MapMetaData
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from transformations import quaternion_from_euler
 import PySimpleGUI as sg
 from map_server.srv import LoadMap
@@ -161,11 +161,11 @@ class FakeTFBroadcaster(object):
         marker.lifetime = rospy.Duration(0.2)
         # marker.color.r = 1.0
         if found == 0:
-          marker.text =  "Door/Passage " + str(dist1)+ " "+ str(dist2)
+          marker.text =  "Door/Passage " #+ str(dist1)+ " "+ str(dist2)
         elif found == 1:
-          marker.text = "Pillar "+ str(dist1)+ " "+ str(dist2)
+          marker.text = "Pillar "#+ str(dist1)+ " "+ str(dist2)
         elif found == 2:
-          marker.text = "Wall on the other side "+ str(dist1)+ " "+ str(dist2)
+          marker.text = "Wall on the other side "#+ str(dist1)+ " "+ str(dist2)
         else:
           marker.text = "No info "+ str(dist1)+ " "+ str(dist2)
         self.pub_passage.publish(marker)
@@ -210,7 +210,7 @@ def update_map(path):
 
 if __name__ == '__main__':
     map_name = 'bremen'
-    passage_detect = True
+    passage_detect = False
 
     sg.theme('DarkAmber')   # Add a touch of color
     # All the stuff inside your window.
@@ -234,6 +234,36 @@ if __name__ == '__main__':
     rospy.init_node('fake_robot_broadcaster')
     path = os.path.abspath(os.path.dirname(__file__))
     tfb = FakeTFBroadcaster(os.path.join(path, '../maps/areas/'), map_name)
+    robot_marker_pub = rospy.Publisher("/robot_marker", MarkerArray, queue_size=1)
+    robot_marker = MarkerArray()
+    marker = Marker()
+    marker.header.frame_id = "map"
+    marker.id = 0
+    marker.type = marker.CUBE
+    marker.action = marker.ADD
+    marker.pose.orientation = tfb.t.transform.rotation
+    marker.pose.position.x = tfb.t.transform.translation.x
+    marker.pose.position.y = tfb.t.transform.translation.y
+    marker.pose.position.z = 0.0
+    marker.scale.x = 0.4
+    marker.scale.y = 0.4
+    marker.scale.z = 0.4
+    marker.color.a = 1.0
+    marker.color.g = 1.0
+    arrow = Marker()
+    arrow.header.frame_id = "map"
+    arrow.id = 1
+    arrow.type = 0
+    arrow.action = arrow.ADD
+    arrow.pose.orientation=tfb.t.transform.rotation
+    arrow.pose.position.x = tfb.t.transform.translation.x
+    arrow.pose.position.y = tfb.t.transform.translation.y
+    arrow.pose.position.z = 0.0
+    arrow.scale.x = 0.6
+    arrow.scale.y = 0.1
+    arrow.scale.z = 0.1
+    arrow.color.a = 1.0
+
     map_updated = False
     data = dict()
     if not passage_detect:
@@ -249,6 +279,17 @@ if __name__ == '__main__':
       tfb.t.header.stamp = rospy.Time.now()
       tfm = tf2_msgs.msg.TFMessage([tfb.t])
       tfb.pub_tf.publish(tfm)
+      robot_marker = MarkerArray()
+      marker.pose.orientation = tfb.t.transform.rotation
+      marker.pose.position.x = tfb.t.transform.translation.x
+      marker.pose.position.y = tfb.t.transform.translation.y
+      arrow.pose.orientation=tfb.t.transform.rotation
+      arrow.pose.position.x = tfb.t.transform.translation.x
+      arrow.pose.position.y = tfb.t.transform.translation.y
+      robot_marker.markers.append(marker)
+      robot_marker.markers.append(arrow)
+      robot_marker_pub.publish(robot_marker)
+
       event, values = window.read(50)
       if event == sg.WIN_CLOSED or event == 'Exit': # if user closes window or clicks cancel
           break

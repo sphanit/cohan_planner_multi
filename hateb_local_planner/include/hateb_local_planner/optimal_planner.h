@@ -71,6 +71,7 @@
 #include <hateb_local_planner/g2o_types/edge_agent_robot_ttcplus.h>
 #include <hateb_local_planner/g2o_types/edge_agent_robot_visibility.h>
 #include <hateb_local_planner/g2o_types/edge_invisible_human.h>
+#include <hateb_local_planner/g2o_types/edge_invisible_human_velocity.h>
 #include <hateb_local_planner/g2o_types/edge_kinematics.h>
 #include <hateb_local_planner/g2o_types/edge_time_optimal.h>
 #include <hateb_local_planner/g2o_types/edge_shortest_path.h>
@@ -684,6 +685,7 @@ protected:
   void AddEdgesDynamicObstacles(double weight_multiplier=1.0);
   void AddEdgesDynamicObstaclesForAgents(double weight_multiplier=1.0);
   void AddEdgesInvisibleHumans(double weight_multiplier=1.0);
+  void AddEdgesInvisibleHumansVelocity(double weight_multiplier=1.0);
 
 
   /**

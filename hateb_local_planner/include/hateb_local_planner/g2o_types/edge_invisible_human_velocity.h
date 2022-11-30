@@ -33,8 +33,8 @@
  * Author: Phani Teja Singamaneni
  *********************************************************************/
 
-#ifndef EDGE_INVISIBLEHUMAN_H
-#define EDGE_INVISIBLEHUMAN_H
+#ifndef EDGE_INVISIBLEHUMAN_VELOCITY_H
+#define EDGE_INVISIBLEHUMAN_VELOCITY_H
 
 #include <hateb_local_planner/g2o_types/vertex_pose.h>
 #include <hateb_local_planner/g2o_types/vertex_timediff.h>
@@ -47,19 +47,19 @@
 namespace hateb_local_planner
 {
 
-class EdgeInvisibleHuman : public BaseTebMultiEdge<1, const Obstacle*>
+class EdgeInvisibleHumanVelocity : public BaseTebMultiEdge<1, const Obstacle*>
 {
 public:
 
   /**
    * @brief Construct edge.
    */
-  EdgeInvisibleHuman() : t_(0)
+  EdgeInvisibleHumanVelocity() : t_(0)
   {
     this->resize(3);
   }
 
-  EdgeInvisibleHuman(double t) : t_(t)
+  EdgeInvisibleHumanVelocity(double t) : t_(t)
   {
     this->resize(3);
   }

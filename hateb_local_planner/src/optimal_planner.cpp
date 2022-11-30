@@ -162,6 +162,7 @@ void TebOptimalPlanner::registerG2OTypes()
   factory->registerType("EDGE_INFLATED_OBSTACLE", new g2o::HyperGraphElementCreator<EdgeInflatedObstacle>);
   factory->registerType("EDGE_DYNAMIC_OBSTACLE", new g2o::HyperGraphElementCreator<EdgeDynamicObstacle>);
   factory->registerType("EDGE_INVISIBLE_HUMAN", new g2o::HyperGraphElementCreator<EdgeInvisibleHuman>);
+  factory->registerType("EDGE_INVISIBLE_HUMAN_VELOCITY", new g2o::HyperGraphElementCreator<EdgeInvisibleHumanVelocity>);
   factory->registerType("EDGE_VIA_POINT", new g2o::HyperGraphElementCreator<EdgeViaPoint>);
   factory->registerType("EDGE_PREFER_ROTDIR", new g2o::HyperGraphElementCreator<EdgePreferRotDir>);
 
@@ -644,7 +645,8 @@ bool TebOptimalPlanner::buildGraph(double weight_multiplier)
       AddEdgesAgentRobotVisibility();
     }
     if (cfg_->hateb.add_invisible_humans){
-      AddEdgesInvisibleHumans();
+      // AddEdgesInvisibleHumans();
+      AddEdgesInvisibleHumansVelocity();
     }
     break;
   case 2:
@@ -1088,6 +1090,37 @@ void TebOptimalPlanner::AddEdgesInvisibleHumans(double weight_multiplier)
     {
       EdgeInvisibleHuman* inv_human_edge = new EdgeInvisibleHuman(time);
       inv_human_edge->setVertex(0,teb_.PoseVertex(i));
+      inv_human_edge->setInformation(information);
+      inv_human_edge->setParameters(*cfg_, robot_model_.get(), obst->get());
+      optimizer_->addEdge(inv_human_edge);
+      time += teb_.TimeDiff(i); // we do not need to check the time diff bounds, since we iterate to "< sizePoses()-1".
+    }
+  }
+}
+
+
+void TebOptimalPlanner::AddEdgesInvisibleHumansVelocity(double weight_multiplier)
+{
+  if (cfg_->optim.weight_invisible_human==0 || weight_multiplier==0 || obstacles_==NULL || isMode >= 3)
+    return; // if weight equals zero skip adding edges!
+
+  Eigen::Matrix<double,1,1> information;
+  information(0,0) = cfg_->optim.weight_invisible_human * weight_multiplier;
+
+  for (ObstContainer::const_iterator obst = obstacles_->begin(); obst != obstacles_->end(); ++obst)
+  {
+    if (!(*obst)->isDynamic() || !(*obst)->isHuman())
+      continue;
+
+    //TODO: Need to edit this part
+    // Skip first and last pose, as they are fixed
+    double time = teb_.TimeDiff(0);
+    for (int i=1; i < teb_.sizePoses() - 1; ++i)
+    {
+      EdgeInvisibleHumanVelocity* inv_human_edge = new EdgeInvisibleHumanVelocity(time);
+      inv_human_edge->setVertex(0,teb_.PoseVertex(i));
+      inv_human_edge->setVertex(1, teb_.PoseVertex(i + 1));
+      inv_human_edge->setVertex(2, teb_.TimeDiffVertex(i));
       inv_human_edge->setInformation(information);
       inv_human_edge->setParameters(*cfg_, robot_model_.get(), obst->get());
       optimizer_->addEdge(inv_human_edge);

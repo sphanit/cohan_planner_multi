@@ -29,6 +29,7 @@ find_package(catkin REQUIRED COMPONENTS
   agent_path_prediction
   cohan_msgs
   visualization_msgs
+  base_nav
 )
 message(STATUS "System: ${CMAKE_SYSTEM}")
 ## System dependencies are found with CMake's conventions

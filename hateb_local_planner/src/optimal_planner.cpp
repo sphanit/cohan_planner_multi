@@ -1787,7 +1787,7 @@ void TebOptimalPlanner::AddEdgesAgentRobotSafety() {
   double min_dist_ = cfg_->hateb.min_agent_robot_dist;
   double weight_safety = cfg_->optim.weight_agent_robot_safety;
 
-  if(current_agent_robot_min_dist < 2.0){
+  if(current_agent_robot_min_dist < 4.0){
     for (auto &agent_teb_kv : agents_tebs_map_) {
       auto &agent_teb = agent_teb_kv.second;
 

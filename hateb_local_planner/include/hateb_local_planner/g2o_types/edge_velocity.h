@@ -102,6 +102,8 @@ public:
       vel_linear = 0.2;
     }
 
+    // std::cout << "mode = " << mode << '\n';
+
     const Eigen::Vector2d deltaS = conf2->estimate().position() - conf1->estimate().position();
 
     double dist = deltaS.norm();
@@ -267,6 +269,7 @@ public:
       vel_linear_x = 0.2;
       vel_linear_y = 0.01;
     }
+    // std::cout << "Mode = " << mode << '\n';
 
     Eigen::Vector2d deltaS = conf2->position() - conf1->position();
 

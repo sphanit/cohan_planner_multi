@@ -1104,6 +1104,7 @@ void TebOptimalPlanner::AddEdgesInvisibleHumansVelocity(double weight_multiplier
   if (cfg_->optim.weight_invisible_human==0 || weight_multiplier==0 || obstacles_==NULL || isMode >= 3)
     return; // if weight equals zero skip adding edges!
 
+  std::cout << "Ima" << '\n';
   Eigen::Matrix<double,1,1> information;
   information(0,0) = cfg_->optim.weight_invisible_human * weight_multiplier;
 
@@ -1262,8 +1263,8 @@ void TebOptimalPlanner::AddEdgesVelocity()
     information(0,1) = 0.0;
     information(1,0) = 0.0;
 
-    for (auto &agent_teb_kv : agents_tebs_map_) {
-      auto &agent_teb = agent_teb_kv.second;
+    // for (auto &agent_teb_kv : agents_tebs_map_) {
+    //   auto &agent_teb = agent_teb_kv.second;
       for (int i=0; i < n - 1; ++i)
       {
         EdgeVelocity* velocity_edge = new EdgeVelocity;
@@ -1274,7 +1275,7 @@ void TebOptimalPlanner::AddEdgesVelocity()
         velocity_edge->setParameters(*cfg_, robot_model_.get(), isMode);
         optimizer_->addEdge(velocity_edge);
       }
-    }
+    // }
   }
   else // holonomic-robot
   {
@@ -1288,10 +1289,11 @@ void TebOptimalPlanner::AddEdgesVelocity()
     information(1,1) = cfg_->optim.weight_max_vel_y;
     information(2,2) = cfg_->optim.weight_max_vel_theta;
 
-    for (auto &agent_teb_kv : agents_tebs_map_) {
-      auto &agent_teb = agent_teb_kv.second;
+    // for (auto &agent_teb_kv : agents_tebs_map_) {
+    //   auto &agent_teb = agent_teb_kv.second;
       for (int i=0; i < n - 1; ++i)
       {
+        // std::cout << "isMode" <<isMode << '\n';
         EdgeVelocityHolonomic* velocity_edge = new EdgeVelocityHolonomic;
         velocity_edge->setVertex(0,teb_.PoseVertex(i));
         velocity_edge->setVertex(1,teb_.PoseVertex(i+1));
@@ -1300,7 +1302,7 @@ void TebOptimalPlanner::AddEdgesVelocity()
         velocity_edge->setParameters(*cfg_, robot_model_.get(), isMode);
         optimizer_->addEdge(velocity_edge);
       }
-    }
+    // }
   }
 }
 

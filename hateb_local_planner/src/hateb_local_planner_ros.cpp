@@ -595,7 +595,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   robot_pose_ = PoseSE2(robot_pose.pose);
   robot_pose_.toPoseMsg(robot_pos_msg);
 
-  if((ros::Time::now()-last_door_pass_detect_).toSec()>=3.0 && door_pass){
+  if((ros::Time::now()-last_door_pass_detect_).toSec()>=5.0 && door_pass){
     door_pass = false;
     isMode = 0;
   }

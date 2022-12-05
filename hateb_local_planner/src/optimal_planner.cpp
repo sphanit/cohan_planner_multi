@@ -1104,7 +1104,7 @@ void TebOptimalPlanner::AddEdgesInvisibleHumansVelocity(double weight_multiplier
   if (cfg_->optim.weight_invisible_human==0 || weight_multiplier==0 || obstacles_==NULL || isMode >= 3)
     return; // if weight equals zero skip adding edges!
 
-  std::cout << "Ima" << '\n';
+  // std::cout << "Ima" << '\n';
   Eigen::Matrix<double,1,1> information;
   information(0,0) = cfg_->optim.weight_invisible_human * weight_multiplier;
 

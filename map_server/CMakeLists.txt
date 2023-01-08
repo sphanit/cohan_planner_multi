@@ -19,6 +19,7 @@ if(NEW_YAMLCPP_FOUND)
 add_definitions(-DHAVE_NEW_YAMLCPP)
 endif(NEW_YAMLCPP_FOUND)
 
+
 add_service_files(
   FILES
   LoadMap.srv
@@ -38,7 +39,9 @@ catkin_package(
         roscpp
         tf
         nav_msgs
+	message_runtime
 )
+
 
 include_directories( include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} )
 add_library(map_server_image_loader src/image_loader.cpp)
@@ -50,6 +53,8 @@ target_link_libraries(map_server
     yaml-cpp
     ${catkin_LIBRARIES}
 )
+# Generate messages before compiling the lib
+add_dependencies(map_server ${PROJECT_NAME}_generate_messages_cpp)
 
 add_executable(map_server-map_saver src/map_saver.cpp)
 set_target_properties(map_server-map_saver PROPERTIES OUTPUT_NAME map_saver)
@@ -78,7 +83,7 @@ if(CATKIN_ENABLE_TESTING)
       gtest
       ${catkin_LIBRARIES}
   )
-  add_dependencies(rtest nav_msgs_gencpp)
+  add_dependencies(rtest nav_msgs_gencpp ${PROJECT_NAME}_generate_messages_cpp)
 
   # This has to be done after we've already built targets, or catkin variables get borked
   find_package(rostest)

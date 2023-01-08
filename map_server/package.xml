@@ -13,7 +13,7 @@
     <url>http://wiki.ros.org/map_server</url>
     <license>BSD</license>
 
-    <buildtool_depend version_gte="0.5.68">catkin</buildtool_depend>
+    <buildtool_depend>catkin</buildtool_depend>
 
     <build_depend>nav_msgs</build_depend>
     <build_depend>roscpp</build_depend>

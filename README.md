@@ -17,7 +17,7 @@ The extension of the [CoHAN Planner](https://github.com/sphanit/CoHAN_Planner) t
 	```
 	mkdir -p cohan_multi_ws/src
 	cd 	cohan_multi_ws/src
-	git clone https://github.com/sphanit/cohan_planner_multi.git -b master
+	git clone https://github.com/sphanit/cohan_planner_multi.git -b model
 	cd ..
 	```
 4. Install the dependencies using rosdep

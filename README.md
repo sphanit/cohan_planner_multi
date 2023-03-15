@@ -10,8 +10,6 @@ The system uses [Human-Aware Timed Elastic Band](https://hal.laas.fr/hal-0292202
 ![](https://github.com/sphanit/images/blob/main/cohan.png)
 
 
-Go [here](https://github.com/sphanit/CoHAN_Planner/tree/kinetic-devel) for ros-kinetic instalaltion guide.
-
 # Citation 
 If you are using our code for your research, please consider citing at least one of our papers (bibtex below).
 

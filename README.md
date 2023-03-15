@@ -27,7 +27,7 @@ If you are using our code for your research, please consider citing at least one
 	```
 	mkdir -p cohan_multi_ws/src
 	cd 	cohan_multi_ws/src
-	git clone https://github.com/sphanit/cohan_planner_multi.git -b model
+	git clone https://github.com/sphanit/cohan_planner_multi.git -b main
 	cd ..
 	```
 4. Install the dependencies using rosdep

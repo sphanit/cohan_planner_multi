@@ -571,6 +571,7 @@ private:
 
   // Tracked agents in HATeb
   cohan_msgs::TrackedAgents tracked_agents_,prev_tracked_agents_; //Tracked agents from an external module
+  std::vector<geometry_msgs::Pose> agents_;
   geometry_msgs::Pose robot_pos_msg, last_robot_pose; //Robot pose messages for context analysis
 
   //Planner State determining parameters

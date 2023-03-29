@@ -355,6 +355,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
     }
     for (auto &segment : agent.segments){
       if(segment.type==DEFAULT_AGENT_SEGMENT){
+        agents_.push_back(segment.pose.pose);
         Eigen::Vector2d rh_vec(segment.pose.pose.position.x-xpos,segment.pose.pose.position.y-ypos);
 
         agents_behind.push_back(rh_vec.dot(robot_vec));
@@ -814,11 +815,16 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
     if(isMode==0)
       isMode = -1;
 
+    std::vector<int> static_agents_ids;
+
     for(int i=0;i<2 && i<visible_agent_ids.size();i++){
       if((int)agents_states_.states[visible_agent_ids[i]-1]>1){
         predict_srv.request.ids.push_back(visible_agent_ids[i]);
         if(isMode==-1)
           isMode = 0;
+      }
+      else{
+        static_agents_ids.push_back(visible_agent_ids[i]);
       }
     }
 
@@ -871,12 +877,28 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
     if (predict_agents_client_ && predict_agents_client_.call(predict_srv)) {
       tf2::Stamped<tf2::Transform> tf_agent_plan_to_global;
+      
+        for(int indx=0; indx < static_agents_ids.size();indx++){
+          geometry_msgs::Twist empty_vel;
+          geometry_msgs::PoseStamped current_hpose;
+          current_hpose.header.frame_id = "static";
+          current_hpose.pose = agents_[static_agents_ids[indx]];
+
+          PlanStartVelGoalVel plan_start_vel_goal_vel;
+          plan_start_vel_goal_vel.plan.push_back(current_hpose);
+          plan_start_vel_goal_vel.start_vel = empty_vel;
+          plan_start_vel_goal_vel.nominal_vel = 0;
+          plan_start_vel_goal_vel.isMode = isMode;
+          transformed_agent_plan_vel_map[static_agents_ids[indx]] = plan_start_vel_goal_vel;
+        }
+
       for (auto predicted_agents_poses :
            predict_srv.response.predicted_agents_poses) {
+
         if(std::find(predict_srv.request.ids.begin(), predict_srv.request.ids.end(),predicted_agents_poses.id) == predict_srv.request.ids.end()){
           continue;
         }
-
+        
         if(isMode == 2)
           continue;
 
@@ -1600,6 +1622,13 @@ void HATebLocalPlannerROS::updateAgentViaPointsContainers(
   for (auto &transformed_agent_plan_vel_kv : transformed_agent_plan_vel_map)
   {
     auto &agent_id = transformed_agent_plan_vel_kv.first;
+    auto &initial_agent_plan = transformed_agent_plan_vel_kv.second.plan;
+    if (initial_agent_plan.size()==1){
+      if(initial_agent_plan[0].header.frame_id=="static"){
+        return;
+      }
+    }
+
     if (agents_via_points_map_.find(agent_id) != agents_via_points_map_.end())
       {
         agents_via_points_map_[agent_id].clear();

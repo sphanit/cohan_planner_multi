@@ -180,6 +180,9 @@ void TebOptimalPlanner::registerG2OTypes()
   factory->registerType("EDGE_AGENT_ROBOT_TTC", new g2o::HyperGraphElementCreator<EdgeAgentRobotTTC>);
   factory->registerType("EDGE_AGENT_ROBOT_TTCplus", new g2o::HyperGraphElementCreator<EdgeAgentRobotTTCplus>);
   factory->registerType("EDGE_AGENT_ROBOT_REL_VELOCITy", new g2o::HyperGraphElementCreator<EdgeAgentRobotRelVelocity>);
+  factory->registerType("EDGE_AGENT_ROBOT_VISIBILITY", new g2o::HyperGraphElementCreator<EdgeAgentRobotVisibility>);
+  factory->registerType("EDGE_STATIC_AGENT_VISIBILITY", new g2o::HyperGraphElementCreator<EdgeStaticAgentVisibility>);
+  
   return;
 }
 
@@ -357,12 +360,13 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
         ++itr;
     }
 
+
     auto &rp = initial_plan.front().pose.position;
 
     for (auto &initial_agent_plan_vel_kv : *initial_agent_plan_vel_map) {
       auto &agent_id = initial_agent_plan_vel_kv.first;
       auto &initial_agent_plan = initial_agent_plan_vel_kv.second.plan;
-      agent_nominal_vels.push_back(initial_agent_plan_vel_kv.second.nominal_vel);
+      
       // isMode = initial_agent_plan_vel_kv.second.isMode;
       // erase agent-teb if agent plan is empty
       if (initial_agent_plan.empty()) {
@@ -373,6 +377,16 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
         }
         continue;
       }
+
+      if (initial_agent_plan.size()==1){
+        if(initial_agent_plan[0].header.frame_id=="static"){
+          static_agents.push_back(initial_agent_plan[0].pose);
+          continue;
+        }
+      }
+
+      agent_nominal_vels.push_back(initial_agent_plan_vel_kv.second.nominal_vel);
+
 
       auto &hp = initial_agent_plan.front().pose.position;
       auto dist = std::hypot(rp.x - hp.x, rp.y - hp.y);
@@ -643,6 +657,7 @@ bool TebOptimalPlanner::buildGraph(double weight_multiplier)
     }
     if (cfg_->hateb.use_agent_robot_visi_c){
       AddEdgesAgentRobotVisibility();
+      AddEdgesStaticAgentVisibility();
     }
     if (cfg_->hateb.add_invisible_humans){
       // AddEdgesInvisibleHumans();
@@ -1929,6 +1944,29 @@ void TebOptimalPlanner::AddEdgesAgentRobotVisibility() {
         }
     }
 }
+
+
+void TebOptimalPlanner::AddEdgesStaticAgentVisibility() {
+    auto robot_teb_size = (int)teb_.sizePoses();
+
+    // for (auto &agent_teb_kv : agents_tebs_map_) {
+    //     auto &agent_teb = agent_teb_kv.second;
+      for(auto &agent: static_agents){
+        PoseSE2 agent_pose(agent);
+        for (unsigned int i = 0; i < robot_teb_size; i++) {
+            Eigen::Matrix<double, 1, 1> information_agent_robot;
+            information_agent_robot.fill(cfg_->optim.weight_agent_robot_visibility);
+
+            EdgeStaticAgentVisibility *static_agent_visibility_edge = new EdgeStaticAgentVisibility;
+            static_agent_visibility_edge->setVertex(0, teb_.PoseVertex(i));
+            static_agent_visibility_edge->setInformation(information_agent_robot);
+            static_agent_visibility_edge->setParameters(*cfg_, agent_pose);
+            optimizer_->addEdge(static_agent_visibility_edge);
+        }
+    }
+}
+
+
 
 void TebOptimalPlanner::AddVertexEdgesApproach() {
   if (!approach_pose_vertex) {

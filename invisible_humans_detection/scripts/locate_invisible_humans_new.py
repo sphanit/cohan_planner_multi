@@ -35,10 +35,10 @@ class InvisibleHumans(object):
 
     rospy.Subscriber('/map_scanner/map_scan', LaserScan, self.laserCB)
     rospy.Subscriber("/map", OccupancyGrid, self.mapCB)
-    self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 1)
-    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size = 1)
-    self.pub_invis_human_corners = rospy.Publisher('invisible_humans_corners', PoseArray, queue_size = 1)
-    self.pub_invis_humans_pos_ = rospy.Publisher('invisible_humans', PoseArray, queue_size = 1)
+    self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray,  queue_size=10, latch=True)
+    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg,  queue_size=10, latch=True)
+    self.pub_invis_human_corners = rospy.Publisher('invisible_humans_corners', PoseArray,  queue_size=10, latch=True)
+    self.pub_invis_humans_pos_ = rospy.Publisher('invisible_humans', PoseArray,  queue_size=10, latch=True)
 
 
     #Intialize tf2 transform listener

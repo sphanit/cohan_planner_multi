@@ -590,6 +590,7 @@ private:
   std::vector<double> agent_nominal_vels; // Nominal velocities  of agents based on moving average filter
   cohan_msgs::StateArray agents_states_; // State of agents
 
+
   // Backoff recovery params
   int stuck_agent_id; // Stores the agent id who blocked the robot's way during backoff recovery
   double ang_theta; // Re-orientation angle

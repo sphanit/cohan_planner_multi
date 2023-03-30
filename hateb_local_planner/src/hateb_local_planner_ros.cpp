@@ -352,10 +352,12 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
       std::vector<double> h_vels;
       agent_vels.push_back(h_vels);
       agent_nominal_vels.push_back(0.0);
+      geometry_msgs::Pose h_pose;
+      agents_.push_back(h_pose);
     }
     for (auto &segment : agent.segments){
       if(segment.type==DEFAULT_AGENT_SEGMENT){
-        agents_.push_back(segment.pose.pose);
+        agents_[itr]= segment.pose.pose;
         Eigen::Vector2d rh_vec(segment.pose.pose.position.x-xpos,segment.pose.pose.position.y-ypos);
 
         agents_behind.push_back(rh_vec.dot(robot_vec));
@@ -815,7 +817,9 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
     if(isMode==0)
       isMode = -1;
 
+
     std::vector<int> static_agents_ids;
+
 
     for(int i=0;i<2 && i<visible_agent_ids.size();i++){
       if((int)agents_states_.states[visible_agent_ids[i]-1]>1){
@@ -877,12 +881,12 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
     if (predict_agents_client_ && predict_agents_client_.call(predict_srv)) {
       tf2::Stamped<tf2::Transform> tf_agent_plan_to_global;
-      
+
         for(int indx=0; indx < static_agents_ids.size();indx++){
           geometry_msgs::Twist empty_vel;
           geometry_msgs::PoseStamped current_hpose;
           current_hpose.header.frame_id = "static";
-          current_hpose.pose = agents_[static_agents_ids[indx]];
+          current_hpose.pose = agents_[static_agents_ids[indx]-1];
 
           PlanStartVelGoalVel plan_start_vel_goal_vel;
           plan_start_vel_goal_vel.plan.push_back(current_hpose);
@@ -1105,10 +1109,10 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   double dt_resize=cfg_.trajectory.dt_ref;
   double dt_hyst_resize=cfg_.trajectory.dt_hysteresis;
 
-  if(isMode==0 or isMode==1){
-    dt_resize = 0.25;
-    dt_hyst_resize = 0.025;
-  }
+  // if(isMode==0 or isMode==1){
+  //   dt_resize = 0.4;
+  //   dt_hyst_resize = 0.0125;
+  // }
 
   bool success = planner_->plan(transformed_plan, &robot_vel_, cfg_.goal_tolerance.free_goal_vel, &transformed_agent_plan_vel_map, &op_costs, dt_resize, dt_hyst_resize, isMode);
 

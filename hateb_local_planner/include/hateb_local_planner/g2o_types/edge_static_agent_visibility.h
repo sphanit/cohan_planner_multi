@@ -72,6 +72,8 @@ public:
         c_visibility = 0.;
     }
 
+    // std::cout << "I am being called\n";
+
     _error[0] = penaltyBoundFromAbove(c_visibility, cfg_->hateb.visibility_cost_threshold,
                                       cfg_->optim.penalty_epsilon);
 

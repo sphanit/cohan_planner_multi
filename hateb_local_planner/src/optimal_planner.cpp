@@ -360,6 +360,8 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
         ++itr;
     }
 
+    static_agents.clear();
+
 
     auto &rp = initial_plan.front().pose.position;
 
@@ -378,12 +380,14 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
         continue;
       }
 
-      if (initial_agent_plan.size()==1){
+      // if (initial_agent_plan.size()<3){
         if(initial_agent_plan[0].header.frame_id=="static"){
           static_agents.push_back(initial_agent_plan[0].pose);
+          // static_agents.push_back(initial_agent_plan[0].pose);
+          // std::cout <<initial_agent_plan[0].pose << std::endl;
           continue;
         }
-      }
+      // }
 
       agent_nominal_vels.push_back(initial_agent_plan_vel_kv.second.nominal_vel);
 

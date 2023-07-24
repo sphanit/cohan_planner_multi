@@ -27,7 +27,8 @@ class AgentFilter(object):
         self.tf = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tf)
 
-        if sim=="stage":
+        if sim=="stage" or sim=="webots":
+            print("ES WEBOTS")
             base = "/base_scan"
         elif sim=="morse":
             base = "/scan"
@@ -99,7 +100,7 @@ class AgentFilter(object):
                     if(i<len(scan.ranges)):
                         filtered_scan.ranges[i] = float('NaN')
 
-        #print (filtered_scan.ranges)
+        # print (filtered_scan.ranges)
         self.filtered_scan = filtered_scan
         self.got_scan = True
 

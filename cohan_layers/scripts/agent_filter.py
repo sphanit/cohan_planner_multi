@@ -20,6 +20,7 @@ class AgentFilter(object):
         self.filtered_scan = LaserScan()
         self.segment_type = TrackedSegmentType.TORSO
         self.agents = []
+        self.new_agents = False
         self.laser_transform = TransformStamped()
         self.got_scan = False
 
@@ -28,7 +29,6 @@ class AgentFilter(object):
         self.listener = tf2_ros.TransformListener(self.tf)
 
         if sim=="stage" or sim=="webots":
-            print("ES WEBOTS")
             base = "/base_scan"
         elif sim=="morse":
             base = "/scan"
@@ -67,53 +67,59 @@ class AgentFilter(object):
 
 
             # Filtering agents from the scan
-            for pose_type in self.agents:
-                rh_vec = [pose_type[0].position.x - laser_pose.x, pose_type[0].position.y - laser_pose.y]
-                sign = base_laser_dir[0]*-rh_vec[1] + base_laser_dir[1]*rh_vec[0]
-                sign = sign/abs(sign)
-                t_angle = scan.angle_max - scan.angle_min
-                mid_angle = t_angle/2 - sign*np.arccos((base_laser_dir[0]*rh_vec[0]+base_laser_dir[1]*rh_vec[1])/(np.linalg.norm(rh_vec)))
+            if self.new_agents:
+                for pose_type in self.agents:
+                    rh_vec = [pose_type[0].position.x - laser_pose.x, pose_type[0].position.y - laser_pose.y]
+                    sign = base_laser_dir[0]*-rh_vec[1] + base_laser_dir[1]*rh_vec[0]
+                    sign = sign/abs(sign)
+                    t_angle = scan.angle_max - scan.angle_min
+                    mid_angle = t_angle/2 - sign*np.arccos((base_laser_dir[0]*rh_vec[0]+base_laser_dir[1]*rh_vec[1])/(np.linalg.norm(rh_vec)))
 
-                mid_idx = int((mid_angle)/scan.angle_increment)
-                if(mid_idx>=len(scan.ranges)):
-                    continue
+                    mid_idx = int((mid_angle)/scan.angle_increment)
+                    if(mid_idx>=len(scan.ranges)):
+                        continue
 
-                if pose_type[1] is 0:
-                    r = 0.6
-                else:
-                    r = 0.4
-                d = np.linalg.norm(rh_vec)
-                mr = scan.ranges[mid_idx]
+                    if pose_type[1] is 0:
+                        r = 0.6
+                    else:
+                        r = 0.4
+                    d = np.linalg.norm(rh_vec)
+                    mr = scan.ranges[mid_idx]
 
-                if(mr<=(d-r)):
-                    continue
+                    if(mr<=(d-r)):
+                        continue
 
-                if(r<=d):
-                    beta = np.arcsin(r/d)
-                else:
-                    beta = np.pi/2
+                    if(r<=d):
+                        beta = np.arcsin(r/d)
+                    else:
+                        beta = np.pi/2
 
-                min_idx = int(np.floor((mid_angle-beta)/scan.angle_increment))
-                max_idx = int(np.ceil((mid_angle+beta)/scan.angle_increment))
+                    min_idx = int(np.floor((mid_angle-beta)/scan.angle_increment))
+                    max_idx = int(np.ceil((mid_angle+beta)/scan.angle_increment))
 
-                for i in range(min_idx, max_idx):
-                    if(i<len(scan.ranges)):
-                        filtered_scan.ranges[i] = float('NaN')
+                    for i in range(min_idx, max_idx):
+                        if(i<len(scan.ranges)):
+                            filtered_scan.ranges[i] = float('NaN')
+                self.new_agents = False
 
         # print (filtered_scan.ranges)
         self.filtered_scan = filtered_scan
         self.got_scan = True
 
     def agentsCB(self,msg):
-        for agent in msg.agents:
-            # if agent.type == 0:
-            #     continue
-            for segment in agent.segments:
-                if(segment.type == self.segment_type):
-                    if(len(self.agents)<agent.track_id):
+        if msg.agents:
+            for agent in msg.agents:
+                # if agent.type == 0:
+                #     continue
+                for segment in agent.segments:
+                    if(segment.type == self.segment_type):
+                        # if(len(self.agents)<agent.track_id):
                         self.agents.append([segment.pose.pose,agent.type])
-                    else:
-                        self.agents[agent.track_id-1] = [segment.pose.pose,agent.type]
+                        # else:
+                            # self.agents[agent.track_id-1] = [segment.pose.pose,agent.type]
+                        # self.agents[agent.track_id] = [segment.pose.pose,agent.type]
+
+            self.new_agents = True
 
     def publishScan(self, event):
         if(self.got_scan):

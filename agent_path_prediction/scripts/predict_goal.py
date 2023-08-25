@@ -14,7 +14,7 @@ from std_srvs.srv import SetBool, Trigger, TriggerResponse
 EPS = 1e-12
 
 class PredictGoal(object):
-    def __init__(self, agent_num=1):
+    def __init__(self, agent_num=50):
         self.agent_num = agent_num
 
         # laas_adream
@@ -42,21 +42,20 @@ class PredictGoal(object):
         NODE_NAME = "agent_goal_predict"
         rospy.init_node(NODE_NAME)
         self.agents_sub_ = rospy.Subscriber("/tracked_agents",TrackedAgents,self.tracked_agentsCB)
-        self.goal_pub_ = rospy.Publisher(NODE_NAME+"/predicted_goal",PredictedGoal, queue_size=2)
+        self.goal_pub_ = rospy.Publisher(NODE_NAME+"/predicted_goal",PredictedGoal, queue_size=4)
         self.goal_srv_ = rospy.Service("goal_changed", Trigger, self.goal_changed)
         rospy.spin()
 
     def tracked_agentsCB(self,msg):
         self.prev_poses = self.current_poses
         self.current_poses = [[] for i in range(self.agent_num)]
-
         for agent in msg.agents:
             for segment in agent.segments:
                 if segment.type == TrackedSegmentType.TORSO:
-                    self.current_poses[agent.track_id-1].append(segment.pose.pose)
+                    self.current_poses[agent.track_id].append(segment.pose.pose)
+                    # self.current_poses[agent.track_id-1].append(segment.pose.pose)
         if not self.done:
             self.prev_poses = self.current_poses
-
         for i in range(0,len(self.current_poses[0])):
             diff = np.linalg.norm([self.current_poses[0][i].position.x - self.prev_poses[0][i].position.x, self.current_poses[0][i].position.y - self.prev_poses[0][i].position.y])
 
@@ -78,10 +77,9 @@ class PredictGoal(object):
                     self.probability_goal[i] =  np.power(self.probability_goal_window[i][k],gf)* np.array(self.probability_goal[i]) # Linear prediction of goal
 
                 for ln in range(0,len(self.goals_x)):
-                    self.probability_goal[i][ln] = (1/dist[ln])*self.probability_goal[i][ln];
+                    self.probability_goal[i][ln] = (1/dist[ln])*self.probability_goal[i][ln]
 
                 self.probability_goal[i] = (self.probability_goal[i]-np.min(self.probability_goal[i]))/(np.max(self.probability_goal[i])-np.min(self.probability_goal[i]))
-
 
                 self.itr = self.itr + 1
                 if self.itr == self.window_size:

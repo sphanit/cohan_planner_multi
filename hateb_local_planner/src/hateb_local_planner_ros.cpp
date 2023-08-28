@@ -50,6 +50,7 @@
 #define PLANNING_SRV_NAME "set_planning_mode"
 #define GET_PLANNING_SRV_NAME "get_planning_mode"
 #define HATEB_LOG "hateb_log"
+#define FOLLOWING_AGENT_TOPIC "/chosen_track"
 // #define OP_COSTS_TOPIC "optimization_costs"
 // #define ROB_POS_TOPIC "Robot_Pose"
 #define DEFAULT_AGENT_SEGMENT cohan_msgs::TrackedSegmentType::TORSO
@@ -249,6 +250,7 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
 
 
     agents_sub_ = nh.subscribe(AGENTS_SUB_TOPIC, 1, &HATebLocalPlannerROS::agentsCB, this);
+    following_sub_ = nh.subscribe(FOLLOWING_AGENT_TOPIC, 1, &HATebLocalPlannerROS::followCB, this);
 
     // op_costs_pub_ = nh.advertise<hateb_local_planner::OptimizationCostArray>( OP_COSTS_TOPIC, 1);
     // robot_pose_pub_ = nh.advertise<geometry_msgs::Pose>(ROB_POS_TOPIC, 1);
@@ -308,6 +310,12 @@ bool HATebLocalPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped>
 
   return true;
 }
+
+void HATebLocalPlannerROS::followCB(const std_msgs::Int32 &follow_id){
+  _following_id = follow_id.data;
+}
+
+
 
 void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_agents){
   //Code block for changing dynamic reconfigure
@@ -428,7 +436,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
   if(temp_dist_idx.size()>0){
     std::sort(temp_dist_idx.begin(),temp_dist_idx.end());
 
-    if(agent_dists[temp_dist_idx[0].second-1]<=2.5){
+    if(agent_dists[temp_dist_idx[0].second]<=2.5){
       isDistunderThreshold = true;
       }
     else{
@@ -442,8 +450,8 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
       n=100;
     for(int it=0;it<temp_dist_idx.size();it++){
       //Ray Tracing
-      double tm_x = tracked_agents_.agents[temp_dist_idx[it].second-1].segments[0].pose.pose.position.x;
-      double tm_y = tracked_agents_.agents[temp_dist_idx[it].second-1].segments[0].pose.pose.position.y;
+      double tm_x = tracked_agents_.agents[temp_dist_idx[it].second].segments[0].pose.pose.position.x;
+      double tm_y = tracked_agents_.agents[temp_dist_idx[it].second].segments[0].pose.pose.position.y;
       auto Dx = (tm_x-xpos)/n;
       auto Dy = (tm_y-ypos)/n;
 
@@ -457,7 +465,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
         unsigned int my;
 
         double check_rad;
-        if((int)tracked_agents_.agents[temp_dist_idx[it].second-1].type==1)
+        if((int)tracked_agents_.agents[temp_dist_idx[it].second].type==1)
           check_rad = cfg_.agent.radius+0.1;
         else
           check_rad = cfg_.agent.robot_radius+0.1;
@@ -476,16 +484,19 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
       }
       int hum_id = temp_dist_idx[it].second;
 
+      if(hum_id == _following_id)
+        continue;
+
 			if(!cell_collision)
 			{
         visible_agent_ids.push_back(hum_id);
-        if((int)tracked_agents_.agents[hum_id-1].type==1)
+        if((int)tracked_agents_.agents[hum_id].type==1)
           agents_radii.push_back(cfg_.agent.radius);
         else
           agents_radii.push_back(cfg_.agent.robot_radius);
 
-				if(agents_states_.states[hum_id-1]==hateb_local_planner::AgentState::NO_STATE){
-					agents_states_.states[hum_id-1] = hateb_local_planner::AgentState::STATIC;
+				if(agents_states_.states[hum_id]==hateb_local_planner::AgentState::NO_STATE){
+					agents_states_.states[hum_id] = hateb_local_planner::AgentState::STATIC;
 				}
 			}
     }
@@ -493,8 +504,11 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
   else{
     for(int it=0;it<2 && it<temp_dist_idx.size();it++){
       if(temp_dist_idx[it].second == stuck_agent_id){
-        visible_agent_ids.push_back(temp_dist_idx[it].second);
-        if((int)tracked_agents_.agents[temp_dist_idx[it].second-1].type==1)
+        int hum_id = temp_dist_idx[it].second;
+        if(hum_id == _following_id)
+          continue;
+        visible_agent_ids.push_back(hum_id);
+        if((int)tracked_agents_.agents[temp_dist_idx[it].second].type==1)
           agents_radii.push_back(cfg_.agent.radius);
         else
           agents_radii.push_back(cfg_.agent.robot_radius);
@@ -509,7 +523,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
     if(cfg_.planning_mode > 0){
     for(int i=0;i<visible_agent_ids.size() && i<hum_xpos.size();i++){
       geometry_msgs::Point v1,v2,v3,v4;
-      auto idx = visible_agent_ids[i]-1;
+      auto idx = visible_agent_ids[i];
       auto agent_radius = agents_radii[idx];
       v1.x = hum_xpos[idx]-agent_radius,v1.y=hum_ypos[idx]-agent_radius,v1.z=0.0;
       v2.x = hum_xpos[idx]-agent_radius,v2.y=hum_ypos[idx]+agent_radius,v2.z=0.0;
@@ -610,7 +624,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
   if((ros::Time::now()-last_position_time).toSec()>=2.0 && cfg_.robot.type==0){   //0: Robot and 1: Human for type
     if(visible_agent_ids.size()>0){
-      if(agent_still[visible_agent_ids[0]-1] && isDistunderThreshold && !stuck){
+      if(agent_still[visible_agent_ids[0]] && isDistunderThreshold && !stuck){
         if(change_mode==0){
           ROS_INFO("I am stuck because of an agent, Changing to VelObs mode");
         }
@@ -621,7 +635,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
           if(!stuck)
             ROS_INFO("I am stuck");
           stuck = true;
-          agents_states_.states[visible_agent_ids[0]-1] = hateb_local_planner::AgentState::BLOCKED;
+          agents_states_.states[visible_agent_ids[0]] = hateb_local_planner::AgentState::BLOCKED;
           stuck_agent_id = visible_agent_ids[0];
           isMode = 2;
         }
@@ -787,8 +801,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
             backed_off = false;
             stuck = false;
             // goal_ctrl = true;
-            if(agents_states_.states[visible_agent_ids[0]-1] != hateb_local_planner::AgentState::MOVING)
-	             agents_states_.states[visible_agent_ids[0]-1] = hateb_local_planner::AgentState::STATIC;
+            if(agents_states_.states[visible_agent_ids[0]] != hateb_local_planner::AgentState::MOVING)
+	             agents_states_.states[visible_agent_ids[0]] = hateb_local_planner::AgentState::STATIC;
           }
         }
         else
@@ -803,8 +817,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
       change_mode = 0;
       backed_off = false;
       stuck = false;
-      if(agents_states_.states[visible_agent_ids[0]-1] != hateb_local_planner::AgentState::MOVING)
-         agents_states_.states[visible_agent_ids[0]-1] = hateb_local_planner::AgentState::STATIC;
+      if(agents_states_.states[visible_agent_ids[0]] != hateb_local_planner::AgentState::MOVING)
+         agents_states_.states[visible_agent_ids[0]] = hateb_local_planner::AgentState::STATIC;
     }
 
     agent_path_prediction::AgentPosePredict predict_srv;
@@ -813,7 +827,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
       isMode = -1;
 
     for(int i=0;i<2 && i<visible_agent_ids.size();i++){
-      if((int)agents_states_.states[visible_agent_ids[i]-1]>1){
+      if((int)agents_states_.states[visible_agent_ids[i]]>1){
         predict_srv.request.ids.push_back(visible_agent_ids[i]);
         if(isMode==-1)
           isMode = 0;
@@ -898,7 +912,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
         PlanStartVelGoalVel plan_start_vel_goal_vel;
         plan_start_vel_goal_vel.plan = agent_plan_combined.plan_to_optimize;
         plan_start_vel_goal_vel.start_vel = transformed_vel.twist;
-        plan_start_vel_goal_vel.nominal_vel = std::max(0.3,agent_nominal_vels[predicted_agents_poses.id-1]);
+        plan_start_vel_goal_vel.nominal_vel = std::max(0.3,agent_nominal_vels[predicted_agents_poses.id]);
         plan_start_vel_goal_vel.isMode = isMode;
         if (agent_plan_combined.plan_after.size() > 0) {
           plan_start_vel_goal_vel.goal_vel = transformed_vel.twist;
@@ -949,7 +963,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
           PlanStartVelGoalVel plan_start_vel_goal_vel;
           plan_start_vel_goal_vel.plan.push_back(transformed_agent_pose);
-          plan_start_vel_goal_vel.nominal_vel = std::max(0.3,agent_nominal_vels[predicted_agents_poses.id-1]);
+          plan_start_vel_goal_vel.nominal_vel = std::max(0.3,agent_nominal_vels[predicted_agents_poses.id]);
           plan_start_vel_goal_vel.isMode = isMode;
           transformed_agent_plan_vel_map[predicted_agents_poses.id] =
               plan_start_vel_goal_vel;

@@ -275,6 +275,7 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     reset_states = true;
     stuck_agent_id = -1;
     door_pass = false;
+    _following_id = -1;
 
     // set initialized flag
     initialized_ = true;
@@ -353,7 +354,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
   std::vector<double> hum_ypos;
 
   int itr = 0;
-
+  agents_states_.states.clear();
   for(auto &agent: tracked_agents_.agents){
     if(agents_states_.states.size()<tracked_agents_.agents.size()){
       agents_states_.states.push_back(hateb_local_planner::AgentState::NO_STATE);
@@ -370,7 +371,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
 
         agent_vels[itr].push_back(std::hypot(segment.twist.twist.linear.x, segment.twist.twist.linear.y));
 
-        if((abs(segment.twist.twist.linear.x)+abs(segment.twist.twist.linear.y)+abs(segment.twist.twist.angular.z)) > 0.0001){
+        if((abs(segment.twist.twist.linear.x)+abs(segment.twist.twist.linear.y)+abs(segment.twist.twist.angular.z)) > 0.1){
           if(agents_states_.states[itr]!=hateb_local_planner::AgentState::BLOCKED){
             agents_states_.states[itr] = hateb_local_planner::AgentState::MOVING;
           }
@@ -407,7 +408,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
         if(tracked_agents_.agents[i].track_id == stuck_agent_id)
           ang_theta = std::atan2((tm_y - ypos)/n_dist, (tm_x - xpos)/n_dist);
 
-        if(hum_move_dist<0.0001){
+        if(hum_move_dist<0.1){
           agent_still.push_back(true);
           if(agents_states_.states[i]==hateb_local_planner::AgentState::MOVING){
             agents_states_.states[i] = hateb_local_planner::AgentState::STOPPED;
@@ -429,7 +430,7 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
     current_agent_dist = agent_dists[0];
     if(dist<10.0 && agents_behind[i] >= 0.0){
       isDistMax = false;
-      temp_dist_idx.push_back(std::make_pair(dist,i+1));
+      temp_dist_idx.push_back(std::make_pair(dist,i));
     }
   }
 

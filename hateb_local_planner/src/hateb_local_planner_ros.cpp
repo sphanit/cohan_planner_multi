@@ -484,9 +484,10 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
       }
       int hum_id = temp_dist_idx[it].second;
 
-      if(hum_id == _following_id)
+      if(hum_id == _following_id){
+        agents_states_.states[hum_id] = hateb_local_planner::AgentState::MOVING;
         continue;
-
+      }
 			if(!cell_collision)
 			{
         visible_agent_ids.push_back(hum_id);
@@ -505,8 +506,10 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
     for(int it=0;it<2 && it<temp_dist_idx.size();it++){
       if(temp_dist_idx[it].second == stuck_agent_id){
         int hum_id = temp_dist_idx[it].second;
-        if(hum_id == _following_id)
+        if(hum_id == _following_id){
+          agents_states_.states[hum_id] = hateb_local_planner::AgentState::MOVING;
           continue;
+        }
         visible_agent_ids.push_back(hum_id);
         if((int)tracked_agents_.agents[temp_dist_idx[it].second].type==1)
           agents_radii.push_back(cfg_.agent.radius);

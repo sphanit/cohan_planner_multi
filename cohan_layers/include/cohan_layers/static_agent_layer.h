@@ -41,6 +41,7 @@
 #include <cohan_layers/agent_layer.h>
 #include <dynamic_reconfigure/server.h>
 #include <cohan_layers/AgentLayerConfig.h>
+#include <std_msgs/String.h>
 
 namespace cohan_layers
 {
@@ -60,6 +61,7 @@ protected:
   void configure(AgentLayerConfig &config, uint32_t level);
   dynamic_reconfigure::Server<AgentLayerConfig>* server_;
   dynamic_reconfigure::Server<AgentLayerConfig>::CallbackType f_;
+  ros::Publisher state_publisher;
 };
 }  // namespace cohan_layers
 

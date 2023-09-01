@@ -57,6 +57,7 @@ void StaticAgentLayer::onInitialize()
   server_ = new dynamic_reconfigure::Server<AgentLayerConfig>(nh);
   f_ = boost::bind(&StaticAgentLayer::configure, this, _1, _2);
   server_->setCallback(f_);
+  state_publisher = nh.advertise<std_msgs::String>("person_state", 1);
 }
 
 void StaticAgentLayer::updateBoundsFromAgents(double* min_x, double* min_y, double* max_x, double* max_y)
@@ -97,8 +98,10 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
     else{
       check_one = agents_.agents[i].type;
     }
-
+    std_msgs::String state;
     if(check_one){
+      std::string temp_1 = "check one true " + std::to_string(agents_.agents[i].track_id);
+      state.data = temp_1.c_str();
       unsigned int width = std::max(1, static_cast<int>((2*radius_) / res)),
                    height = std::max(1, static_cast<int>((2*radius_) / res));
 
@@ -156,6 +159,8 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
     }
 
     else{
+      std::string temp_2 = "check one false " + std::to_string(agents_.agents[i].track_id);
+      state.data = temp_2.c_str();
       double rad;
       if(agents_.agents[i].type==1){
         rad = agent_radius;
@@ -220,6 +225,7 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
         }
       }
     }
+    state_publisher.publish(state);
   }
 }
 

@@ -40,7 +40,7 @@ class AgentFilter(object):
         rospy.Subscriber("tracked_agents", TrackedAgents, self.agentsCB)
         self.laser_pub = rospy.Publisher("base_scan_filtered", LaserScan, queue_size=10)
 
-        rospy.Timer(rospy.Duration(0.02), self.publishScan)
+        rospy.Timer(rospy.Duration(0.05), self.publishScan)
 
         # Keep the node alive
         rospy.spin()

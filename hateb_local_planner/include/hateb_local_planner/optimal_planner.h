@@ -79,6 +79,7 @@
 #include <hateb_local_planner/g2o_types/edge_dynamic_obstacle.h>
 #include <hateb_local_planner/g2o_types/edge_via_point.h>
 #include <hateb_local_planner/g2o_types/edge_prefer_rotdir.h>
+#include <hateb_local_planner/g2o_types/edge_static_agent_visibility.h>
 
 // messages
 #include <nav_msgs/Path.h>
@@ -686,6 +687,7 @@ protected:
   void AddEdgesDynamicObstaclesForAgents(double weight_multiplier=1.0);
   void AddEdgesInvisibleHumans(double weight_multiplier=1.0);
   void AddEdgesInvisibleHumansVelocity(double weight_multiplier=1.0);
+  void AddEdgesStaticAgentVisibility();
 
 
   /**
@@ -757,6 +759,7 @@ protected:
   std::pair<bool, geometry_msgs::Twist> vel_start_; //!< Store the initial velocity at the start pose
   std::pair<bool, geometry_msgs::Twist> vel_goal_; //!< Store the final velocity at the goal pose
   std::map<uint64_t, std::pair<bool, geometry_msgs::Twist>> agents_vel_start_, agents_vel_goal_;
+  std::vector<geometry_msgs::Pose> static_agents;
 
   bool initialized_; //!< Keeps track about the correct initialization of this class
   bool optimized_; //!< This variable is \c true as long as the last optimization has been completed successful

@@ -571,6 +571,7 @@ private:
 
   // Tracked agents in HATeb
   cohan_msgs::TrackedAgents tracked_agents_,prev_tracked_agents_; //Tracked agents from an external module
+  std::vector<geometry_msgs::Pose> agents_;
   geometry_msgs::Pose robot_pos_msg, last_robot_pose; //Robot pose messages for context analysis
 
   //Planner State determining parameters
@@ -588,6 +589,7 @@ private:
   std::vector<std::vector<double>> agent_vels; // List of agent velocities over time
   std::vector<double> agent_nominal_vels; // Nominal velocities  of agents based on moving average filter
   cohan_msgs::StateArray agents_states_; // State of agents
+
 
   // Backoff recovery params
   int stuck_agent_id; // Stores the agent id who blocked the robot's way during backoff recovery

@@ -59,6 +59,7 @@
 // message types
 #include <nav_msgs/Path.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Int32.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
@@ -467,6 +468,9 @@ protected:
   // Tracked agents call back to integrate agents into planning
   void agentsCB(const cohan_msgs::TrackedAgents &tracked_agents);
 
+  // Follow agent callback to differentiate IDs
+  void followCB(const std_msgs::Int32 &follow_id);
+
 
   // Standalone optimization for analysis
   bool optimizeStandalone(hateb_local_planner::Optimize::Request &req,
@@ -604,12 +608,16 @@ private:
 
   // Tracked agents Subscriber
   ros::Subscriber agents_sub_;
+  ros::Subscriber following_sub_;
 
   // Logs and agent states publishers
   ros::Publisher log_pub_, agents_states_pub_;
 
   //Name space to support multiple agents
   std::string ns_;
+
+  // ID of the person following
+  int _following_id;
 
   // Optional publishers
   // ros::Publisher op_costs_pub_, robot_pose_pub_;

@@ -756,8 +756,10 @@ void TebVisualization::publishTrackedAgents(const cohan_msgs::TrackedAgentsConst
           arrow.color.b = 0.0f;
           arrow.color.a = 1.0;
 
-          marker.lifetime = ros::Duration(2.0);
-          arrow.lifetime = ros::Duration(2.0);
+          // marker.lifetime = ros::Duration(2.0);
+          // arrow.lifetime = ros::Duration(2.0);
+          marker.lifetime = ros::Duration(0.1);
+          arrow.lifetime = ros::Duration(0.1);
           marker_arr.markers.push_back(marker);
           arrow_arr.markers.push_back(arrow);
           i++;

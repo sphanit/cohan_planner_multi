@@ -14,7 +14,7 @@ from std_srvs.srv import SetBool, Trigger, TriggerResponse
 EPS = 1e-12
 
 class PredictGoal(object):
-    def __init__(self, agent_num=1):
+    def __init__(self, agent_num=50):
         self.agent_num = agent_num
 
         # laas_adream
@@ -42,7 +42,7 @@ class PredictGoal(object):
         NODE_NAME = "agent_goal_predict"
         rospy.init_node(NODE_NAME)
         self.agents_sub_ = rospy.Subscriber("/tracked_agents",TrackedAgents,self.tracked_agentsCB)
-        self.goal_pub_ = rospy.Publisher(NODE_NAME+"/predicted_goal",PredictedGoal, queue_size=2)
+        self.goal_pub_ = rospy.Publisher(NODE_NAME+"/predicted_goal",PredictedGoal, queue_size=4)
         self.goal_srv_ = rospy.Service("goal_changed", Trigger, self.goal_changed)
         rospy.spin()
 
@@ -53,7 +53,7 @@ class PredictGoal(object):
         for agent in msg.agents:
             for segment in agent.segments:
                 if segment.type == TrackedSegmentType.TORSO:
-                    self.current_poses[agent.track_id-1].append(segment.pose.pose)
+                    self.current_poses[agent.track_id].append(segment.pose.pose)
         if not self.done:
             self.prev_poses = self.current_poses
 

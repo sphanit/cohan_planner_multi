@@ -14,4 +14,8 @@
     <!-- <remap from="tracked_agents" to="$(arg ns)/tracked_agents"/> -->
   </node>
 
+  <node pkg="cohan_layers" type="agent_filter.py" name="agent_filter_laser" output="screen" if="$(eval 'webots'==arg('simulator'))"
+        args="$(arg simulator) $(arg ns)" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' ">
+  </node>
+
 </launch>

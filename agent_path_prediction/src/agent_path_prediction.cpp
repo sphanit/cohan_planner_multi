@@ -644,18 +644,18 @@ bool AgentPathPrediction::predictAgentsExternal(
             AgentStartPoseVel agent_start_pose_vel = {
                 .id = agent.track_id, .pose = agent_start, .vel = segment.twist};
             agent_start_pose_vels.push_back(agent_start_pose_vel);
-            behind_path_vels_pos[agent.track_id-1] = idx_order;
+            behind_path_vels_pos[agent.track_id] = idx_order;
           }
           else{
             if(behind_path_vels_.size()>=agent.track_id && std::find(req.ids.begin(),req.ids.end(),agent.track_id)!=req.ids.end()){
-              double dist_far = std::hypot(agent_start.pose.position.x-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.x,
-                                           agent_start.pose.position.y-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.y);
+              double dist_far = std::hypot(agent_start.pose.position.x-behind_path_vels_[behind_path_vels_pos[agent.track_id]].path.poses[0].pose.position.x,
+                                           agent_start.pose.position.y-behind_path_vels_[behind_path_vels_pos[agent.track_id]].path.poses[0].pose.position.y);
             if(dist_far > 0.5){ // To ensure that the path is recalculated only if the agent is deviating from the path
               start_poses_far.push_back(true);
               AgentStartPoseVel agent_start_pose_vel = {
                   .id = agent.track_id, .pose = agent_start, .vel = segment.twist};
               agent_start_pose_vels.push_back(agent_start_pose_vel);
-              behind_path_vels_pos[agent.track_id-1] = idx_order;
+              behind_path_vels_pos[agent.track_id] = idx_order;
               behind_path_vels_.clear();
             }
            }
@@ -800,19 +800,19 @@ bool AgentPathPrediction::predictAgentsBehind(
           AgentStartPoseVel agent_start_pose_vel = {
               .id = agent.track_id, .pose = agent_start, .vel = segment.twist};
           agent_start_pose_vels.push_back(agent_start_pose_vel);
-          behind_path_vels_pos[agent.track_id-1] = idx_order;
+          behind_path_vels_pos[agent.track_id] = idx_order;
           }
           else{
             if(behind_path_vels_.size()>=agent.track_id && std::find(req.ids.begin(),req.ids.end(),agent.track_id)!=req.ids.end()){
-            double dist_far = std::hypot(agent_start.pose.position.x-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.x,
-                                         agent_start.pose.position.y-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.y);
+            double dist_far = std::hypot(agent_start.pose.position.x-behind_path_vels_[behind_path_vels_pos[agent.track_id]].path.poses[0].pose.position.x,
+                                         agent_start.pose.position.y-behind_path_vels_[behind_path_vels_pos[agent.track_id]].path.poses[0].pose.position.y);
 
             if(dist_far > 0.5){ // To ensure that the path is recalculated only if the agent is deviating from the path
               start_poses_far.push_back(true);
               AgentStartPoseVel agent_start_pose_vel = {
                   .id = agent.track_id, .pose = agent_start, .vel = segment.twist};
               agent_start_pose_vels.push_back(agent_start_pose_vel);
-              behind_path_vels_pos[agent.track_id-1] = idx_order;
+              behind_path_vels_pos[agent.track_id] = idx_order;
               behind_path_vels_.clear();
             }
           }
@@ -964,19 +964,19 @@ bool AgentPathPrediction::predictAgentsGoal(
             AgentStartPoseVel agent_start_pose_vel = {
                  .id = agent.track_id, .pose = agent_start, .vel = segment.twist};
              agent_start_pose_vels.push_back(agent_start_pose_vel);
-             behind_path_vels_pos[agent.track_id-1] = idx_order;
+             behind_path_vels_pos[agent.track_id] = idx_order;
           }
           else{
             if(behind_path_vels_.size()>=agent.track_id && std::find(req.ids.begin(),req.ids.end(),agent.track_id)!=req.ids.end()){
-            double dist_far = std::hypot(agent_start.pose.position.x-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.x,
-                                         agent_start.pose.position.y-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.y);
+            double dist_far = std::hypot(agent_start.pose.position.x-behind_path_vels_[behind_path_vels_pos[agent.track_id]].path.poses[0].pose.position.x,
+                                         agent_start.pose.position.y-behind_path_vels_[behind_path_vels_pos[agent.track_id]].path.poses[0].pose.position.y);
 
             if(dist_far > 0.5){
               start_poses_far.push_back(true);
               AgentStartPoseVel agent_start_pose_vel = {
                   .id = agent.track_id, .pose = agent_start, .vel = segment.twist};
               agent_start_pose_vels.push_back(agent_start_pose_vel);
-              behind_path_vels_pos[agent.track_id-1] = idx_order;
+              behind_path_vels_pos[agent.track_id] = idx_order;
               behind_path_vels_.clear();
             }
            }

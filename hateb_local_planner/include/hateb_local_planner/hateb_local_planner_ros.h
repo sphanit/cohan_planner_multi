@@ -60,6 +60,7 @@
 #include <nav_msgs/Path.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Int32.h>
+#include <std_msgs/Float32.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
@@ -612,6 +613,7 @@ private:
 
   // Logs and agent states publishers
   ros::Publisher log_pub_, agents_states_pub_;
+  ros::Publisher ttg_pub_;
 
   //Name space to support multiple agents
   std::string ns_;

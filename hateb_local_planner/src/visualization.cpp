@@ -386,6 +386,7 @@ void TebVisualization::publishTrajectory(
       ros::Duration(remaining_path_dist / cfg_->robot.max_vel_x);
 
   if(!trajectory.points.empty()) {
+    std::cout << "I am in " << robot_time_to_goal << "\n";
     local_traj_pub_.publish(trajectory);
     robot_traj_time_pub_.publish(robot_time_to_goal);
     robot_path_time_pub_.publish(robot_time_to_goal_full);

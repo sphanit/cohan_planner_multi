@@ -250,11 +250,13 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
 
 
     agents_sub_ = nh.subscribe(AGENTS_SUB_TOPIC, 1, &HATebLocalPlannerROS::agentsCB, this);
+    following_sub_ = nh.subscribe(FOLLOWING_AGENT_TOPIC, 1, &HATebLocalPlannerROS::followCB, this);
 
     // op_costs_pub_ = nh.advertise<hateb_local_planner::OptimizationCostArray>( OP_COSTS_TOPIC, 1);
     // robot_pose_pub_ = nh.advertise<geometry_msgs::Pose>(ROB_POS_TOPIC, 1);
     agents_states_pub_ = nh.advertise<cohan_msgs::StateArray>("agents_states",1);
-    following_sub_ = nh.subscribe(FOLLOWING_AGENT_TOPIC, 1, &HATebLocalPlannerROS::followCB, this);
+    ttg_pub_ = nh.advertise<std_msgs::Float32>("time_to_goal",10);
+  
     log_pub_ = nh.advertise<std_msgs::String>(HATEB_LOG,1);
 
     last_call_time_ = ros::Time::now() - ros::Duration(cfg_.hateb.pose_prediction_reset_time);
@@ -310,6 +312,10 @@ bool HATebLocalPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped>
   goal_reached_ = false;
 
   return true;
+}
+
+void HATebLocalPlannerROS::followCB(const std_msgs::Int32 &follow_id){
+  _following_id = follow_id.data;
 }
 
 void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_agents){
@@ -1169,6 +1175,10 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
   double ttg = std::hypot(transformed_plan.back().pose.position.x - transformed_plan.front().pose.position.x,
                 transformed_plan.back().pose.position.y - transformed_plan.front().pose.position.y)/std::hypot(robot_vel_.linear.x,robot_vel_.linear.y);
+  
+  std_msgs::Float32 ttg_msg; 
+  ttg_msg.data = ttg;
+  ttg_pub_.publish(ttg_msg);
 
   // Undo temporary horizon reduction
   auto hr2_start_time = ros::Time::now();

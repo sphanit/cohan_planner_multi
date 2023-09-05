@@ -32,6 +32,7 @@ add_message_files( DIRECTORY msg
     TrajectoryPoint.msg
     TrajectoryPointMsg.msg
     TrajectoryMsg.msg
+    AgentState.msg
     StateArray.msg
     AgentMarker.msg
     AgentMarkerStamped.msg

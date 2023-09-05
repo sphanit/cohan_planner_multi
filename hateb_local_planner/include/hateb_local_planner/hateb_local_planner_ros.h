@@ -60,7 +60,6 @@
 #include <nav_msgs/Path.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Int32.h>
-#include <std_msgs/Float32.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
@@ -81,6 +80,7 @@
 #include <std_srvs/Trigger.h>
 #include <std_srvs/TriggerRequest.h>
 #include <std_srvs/TriggerResponse.h>
+#include <cohan_msgs/AgentState.h>
 #include <cohan_msgs/StateArray.h>
 
 // transforms
@@ -576,13 +576,13 @@ private:
 
   // Tracked agents in HATeb
   cohan_msgs::TrackedAgents tracked_agents_,prev_tracked_agents_; //Tracked agents from an external module
-  std::vector<geometry_msgs::Pose> agents_;
+  std::map<int, geometry_msgs::Pose> agents_;
   geometry_msgs::Pose robot_pos_msg, last_robot_pose; //Robot pose messages for context analysis
 
   //Planner State determining parameters
   // different flags, times and measures
   bool isDistunderThreshold, isDistMax, stuck, goal_ctrl, reset_states, ext_goal, backed_off, door_pass;
-  std::vector<bool> agent_still;
+  std::map<int, bool> agent_still;
   ros::Time last_position_time, last_omega_sign_change_, last_door_pass_detect_;
   double last_omega_;
 
@@ -591,8 +591,8 @@ private:
 
   // Agent ids, states and velocities
   std::vector<int> visible_agent_ids; // List of visible agents
-  std::vector<std::vector<double>> agent_vels; // List of agent velocities over time
-  std::vector<double> agent_nominal_vels; // Nominal velocities  of agents based on moving average filter
+  std::map<int, std::vector<double>> agent_vels; // List of agent velocities over time
+  std::map<int, double> agent_nominal_vels; // Nominal velocities  of agents based on moving average filter
   cohan_msgs::StateArray agents_states_; // State of agents
 
 
@@ -613,7 +613,7 @@ private:
 
   // Logs and agent states publishers
   ros::Publisher log_pub_, agents_states_pub_;
-  ros::Publisher ttg_pub_;
+
 
   //Name space to support multiple agents
   std::string ns_;

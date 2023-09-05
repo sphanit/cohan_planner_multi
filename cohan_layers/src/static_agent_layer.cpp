@@ -87,8 +87,8 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
     auto agent = transformed_agents_[i];
 
     bool check_one=false;
-    if(!states_.states.empty()){
-      if(((int)states_.states[i] < 2) && ((int)agents_.agents[i].type == 1)){
+    if(!states_.agents_states.empty()){
+      if(((int)states_.agents_states[i].state < 2) && ((int)agents_.agents[i].type == 1)){
         check_one = true;
       }
       else{

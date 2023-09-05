@@ -98,57 +98,61 @@ void AgentLayer::updateBounds(double origin_x, double origin_y, double origin_z,
 
   if((ros::Time::now()-last_time).toSec() > 1.0){
     reset = true;
-    states_.states.clear();
+    states_.agents_states.clear();
   }
 
   for(auto &agent : agents_.agents){
     for(auto &segment : agent.segments){
       if((segment.type == DEFAULT_AGENT_PART) && !reset){
-        if(!states_.states.empty() && !shutdown_){
-          if((int)states_.states[agent.track_id] != 0){
-          AgentPoseVel agent_pose_vel;
-          agent_pose_vel.header.frame_id = agents_.header.frame_id;
-          agent_pose_vel.header.stamp = agents_.header.stamp;
-          geometry_msgs::PoseStamped before_pose, after_pose;
+        if(!states_.agents_states.empty() && !shutdown_){
+          for(auto &a_state: states_.agents_states){
+            if(a_state.track_id == agent.track_id){
+              if((int)a_state.state != 0){
+                AgentPoseVel agent_pose_vel;
+                agent_pose_vel.header.frame_id = agents_.header.frame_id;
+                agent_pose_vel.header.stamp = agents_.header.stamp;
+                geometry_msgs::PoseStamped before_pose, after_pose;
 
-          try
-          {
-            before_pose.pose = segment.pose.pose;
-            before_pose.header.frame_id = agents_.header.frame_id;
-            before_pose.header.stamp = agents_.header.stamp;
-            tf_->transform(before_pose,after_pose,global_frame,ros::Duration(0.5));
-            agent_pose_vel.pose = after_pose.pose;
+                try
+                {
+                  before_pose.pose = segment.pose.pose;
+                  before_pose.header.frame_id = agents_.header.frame_id;
+                  before_pose.header.stamp = agents_.header.stamp;
+                  tf_->transform(before_pose,after_pose,global_frame,ros::Duration(0.5));
+                  agent_pose_vel.pose = after_pose.pose;
 
-            before_pose.pose.position.x += segment.twist.twist.linear.x;
-            before_pose.pose.position.y += segment.twist.twist.linear.y;
-            auto hb_yaw = tf2::getYaw(before_pose.pose.orientation);
-            tf2::Quaternion quat;
-            quat.setEuler(segment.twist.twist.angular.z + hb_yaw,0.0,0.0);
-            tf2::convert(before_pose.pose.orientation, quat);
-            tf_->transform(before_pose,after_pose,global_frame, ros::Duration(0.5));
-            agent_pose_vel.velocity.linear.x = after_pose.pose.position.x - agent_pose_vel.pose.position.x;
-            agent_pose_vel.velocity.linear.y = after_pose.pose.position.y - agent_pose_vel.pose.position.y;
-            agent_pose_vel.velocity.angular.z = angles::shortest_angular_distance(tf2::getYaw(after_pose.pose.orientation),tf2::getYaw(agent_pose_vel.pose.orientation));
+                  before_pose.pose.position.x += segment.twist.twist.linear.x;
+                  before_pose.pose.position.y += segment.twist.twist.linear.y;
+                  auto hb_yaw = tf2::getYaw(before_pose.pose.orientation);
+                  tf2::Quaternion quat;
+                  quat.setEuler(segment.twist.twist.angular.z + hb_yaw,0.0,0.0);
+                  tf2::convert(before_pose.pose.orientation, quat);
+                  tf_->transform(before_pose,after_pose,global_frame, ros::Duration(0.5));
+                  agent_pose_vel.velocity.linear.x = after_pose.pose.position.x - agent_pose_vel.pose.position.x;
+                  agent_pose_vel.velocity.linear.y = after_pose.pose.position.y - agent_pose_vel.pose.position.y;
+                  agent_pose_vel.velocity.angular.z = angles::shortest_angular_distance(tf2::getYaw(after_pose.pose.orientation),tf2::getYaw(agent_pose_vel.pose.orientation));
 
-            transformed_agents_.push_back(agent_pose_vel);
-          }
-          catch (tf2::LookupException& ex)
-          {
-            ROS_ERROR("No Transform available Error: %s\n", ex.what());
-            continue;
-          }
-          catch (tf2::ConnectivityException& ex)
-          {
-            ROS_ERROR("Connectivity Error: %s\n", ex.what());
-            continue;
-          }
-          catch (tf2::ExtrapolationException& ex)
-          {
-            ROS_ERROR("Extrapolation Error: %s\n", ex.what());
-            continue;
+                  transformed_agents_.push_back(agent_pose_vel);
+                }
+                catch (tf2::LookupException& ex)
+                {
+                  ROS_ERROR("No Transform available Error: %s\n", ex.what());
+                  continue;
+                }
+                catch (tf2::ConnectivityException& ex)
+                {
+                  ROS_ERROR("Connectivity Error: %s\n", ex.what());
+                  continue;
+                }
+                catch (tf2::ExtrapolationException& ex)
+                {
+                  ROS_ERROR("Extrapolation Error: %s\n", ex.what());
+                  continue;
+                }
+              }
+            }
           }
         }
-      }
       }
       else if(reset && !shutdown_){
         AgentPoseVel agent_pose_vel;

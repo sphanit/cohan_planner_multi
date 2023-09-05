@@ -431,6 +431,7 @@ bool AgentPathPrediction::predictAgentsVelScale(
 bool AgentPathPrediction::predictAgentsVelObs(
     agent_path_prediction::AgentPosePredict::Request &req,
     agent_path_prediction::AgentPosePredict::Response &res) {
+  
   // validate prediction time
   if (req.predict_times.size() == 0) {
     ROS_ERROR_NAMED(NODE_NAME, "prediction times cannot be empty");
@@ -460,7 +461,7 @@ bool AgentPathPrediction::predictAgentsVelObs(
       continue;
     }
     for (auto segment : agent.segments) {
-      if (segment.type == default_agent_part_) {
+      if (segment.type == default_agent_part_) {        
         // calculate future agent poses based on current velocity
         agent_path_prediction::PredictedPoses predicted_poses;
         predicted_poses.id = agent.track_id;
@@ -501,6 +502,7 @@ bool AgentPathPrediction::predictAgentsVelObs(
             predicted_pose.pose.pose.orientation =
                 tf::createQuaternionMsgFromYaw(
                     tf::getYaw(segment.pose.pose.orientation) + theta);
+                    
           } else {
             predicted_pose.pose.pose.position.x =
                 segment.pose.pose.position.x +
@@ -1227,6 +1229,7 @@ bool AgentPathPrediction::transformPoseTwist(
           twist.header.frame_id = tracked_agents.header.frame_id;
           twist.twist = segment.twist.twist;
           try {
+            std::cout << "I am here" << "\n";
             tf::Stamped<tf::Pose> pose_tf;
             tf::poseStampedMsgToTF(pose_ut, pose_tf);
             tf::StampedTransform start_pose_to_plan_transform;

@@ -85,8 +85,8 @@ void AgentVisibilityLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int m
     Eigen::Vector2d orient_vec(std::cos(theta),std::sin(theta));
 
     if((int)agents_.agents[i].type == 1){
-      if(!states_.states.empty()){
-        if((int)states_.states[i] > 1)
+      if(!states_.agents_states.empty()){
+        if((int)states_.agents_states[i].state > 1)
           continue;
       }
       unsigned int width = std::max(1, static_cast<int>((2*radius_) / res)),

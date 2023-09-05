@@ -255,7 +255,6 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     // op_costs_pub_ = nh.advertise<hateb_local_planner::OptimizationCostArray>( OP_COSTS_TOPIC, 1);
     // robot_pose_pub_ = nh.advertise<geometry_msgs::Pose>(ROB_POS_TOPIC, 1);
     agents_states_pub_ = nh.advertise<cohan_msgs::StateArray>("agents_states",1);
-    ttg_pub_ = nh.advertise<std_msgs::Float32>("time_to_goal",10);
   
     log_pub_ = nh.advertise<std_msgs::String>(HATEB_LOG,1);
 
@@ -273,7 +272,7 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     ext_goal = false;
     backed_off = false;
     goal_ctrl = true;
-    agents_states_.states.clear();
+    agents_states_.agents_states.clear();
     reset_states = true;
     stuck_agent_id = -1;
     door_pass = false;
@@ -336,9 +335,9 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
 
 
   tracked_agents_ = tracked_agents;
-  std::vector<double> agent_dists;
-  std::vector<double> agents_behind;
-  std::vector<double> agents_radii;
+  std::map<int, double> agent_dists;
+  std::map<int, double> agents_behind;
+  std::map<int, double> agents_radii;
 
   geometry_msgs::TransformStamped transformStamped;
   std::string base_link = "base_link";
@@ -350,46 +349,59 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
   auto ypos = transformStamped.transform.translation.y;
   auto ryaw = tf2::getYaw(transformStamped.transform.rotation);
   Eigen::Vector2d robot_vec(std::cos(ryaw),std::sin(ryaw));
-  std::vector<double> hum_xpos;
-  std::vector<double> hum_ypos;
+  std::map<int, double> hum_xpos;
+  std::map<int, double> hum_ypos;
 
   int itr = 0;
-  agents_states_.states.clear();
+  agents_states_.agents_states.clear();
+  agent_vels.clear();
+  agent_nominal_vels.clear();
+  visible_agent_ids.clear();
 
   for(auto &agent: tracked_agents_.agents){
-    if(agents_states_.states.size()<tracked_agents_.agents.size()){
-      agents_states_.states.push_back(hateb_local_planner::AgentState::NO_STATE);
+    if(agents_states_.agents_states.size()<tracked_agents_.agents.size()){
+      cohan_msgs::AgentState as;
+      as.track_id = agent.track_id;
+      as.state = hateb_local_planner::AgentState::NO_STATE;
+      visible_agent_ids.push_back(agent.track_id);
+      agents_states_.agents_states.push_back(as);
       std::vector<double> h_vels;
-      agent_vels.push_back(h_vels);
-      agent_nominal_vels.push_back(0.0);
+      agent_vels[agent.track_id] = h_vels;
+      agent_nominal_vels[agent.track_id] = 0.0;
       geometry_msgs::Pose h_pose;
-      agents_.push_back(h_pose);
+      agents_[agent.track_id] = h_pose;
     }
     for (auto &segment : agent.segments){
       if(segment.type==DEFAULT_AGENT_SEGMENT){
-        agents_[itr]= segment.pose.pose;
+        agents_[agent.track_id]= segment.pose.pose;
         Eigen::Vector2d rh_vec(segment.pose.pose.position.x-xpos,segment.pose.pose.position.y-ypos);
 
-        agents_behind.push_back(rh_vec.dot(robot_vec));
-        agent_dists.push_back(rh_vec.norm());
+        agents_behind[agent.track_id] = rh_vec.dot(robot_vec);
+        agent_dists[agent.track_id] = rh_vec.norm();
 
-        agent_vels[itr].push_back(std::hypot(segment.twist.twist.linear.x, segment.twist.twist.linear.y));
+        agent_vels[agent.track_id].push_back(std::hypot(segment.twist.twist.linear.x, segment.twist.twist.linear.y));
 
         if((abs(segment.twist.twist.linear.x)+abs(segment.twist.twist.linear.y)+abs(segment.twist.twist.angular.z)) > 0.1){
-          if(agents_states_.states[itr]!=hateb_local_planner::AgentState::BLOCKED){
-            agents_states_.states[itr] = hateb_local_planner::AgentState::MOVING;
+          for (auto &a_state: agents_states_.agents_states){
+            if(a_state.track_id == agent.track_id)
+            {
+              if(a_state.state!=hateb_local_planner::AgentState::BLOCKED){
+                a_state.state = hateb_local_planner::AgentState::MOVING;
+              }              
+            }
           }
+
         }
 
-        auto n = agent_vels[itr].size();
+        auto n = agent_vels[agent.track_id].size();
         float average = 0.0f;
         if (n != 0) {
-          average = accumulate(agent_vels[itr].begin(), agent_vels[itr].end(), 0.0) / n;
+          average = accumulate(agent_vels[agent.track_id].begin(), agent_vels[agent.track_id].end(), 0.0) / n;
         }
-        agent_nominal_vels[itr] = average;
+        agent_nominal_vels[agent.track_id] = average;
 
         if(n==cfg_.agent.num_moving_avg)
-          agent_vels[itr].erase(agent_vels[itr].begin());
+          agent_vels[agent.track_id].erase(agent_vels[agent.track_id].begin());
         }
     }
     itr++;
@@ -406,41 +418,64 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
         auto tm_x = tracked_agents_.agents[i].segments[j].pose.pose.position.x;
         auto tm_y = tracked_agents_.agents[i].segments[j].pose.pose.position.y;
 
-        hum_xpos.push_back(tm_x);
-        hum_ypos.push_back(tm_y);
+        hum_xpos[tracked_agents_.agents[i].track_id] = tm_x;
+        hum_ypos[tracked_agents_.agents[i].track_id] = tm_y;
         auto n_dist = std::hypot(tm_y - ypos,tm_x - xpos);
         if(tracked_agents_.agents[i].track_id == stuck_agent_id)
           ang_theta = std::atan2((tm_y - ypos)/n_dist, (tm_x - xpos)/n_dist);
 
         if(hum_move_dist<0.1){
-          agent_still.push_back(true);
-          if(agents_states_.states[i]==hateb_local_planner::AgentState::MOVING){
-            agents_states_.states[i] = hateb_local_planner::AgentState::STOPPED;
+          agent_still[tracked_agents_.agents[i].track_id] = true;
+
+          for (auto &a_state: agents_states_.agents_states){
+            if(a_state.track_id == tracked_agents_.agents[i].track_id)
+            {
+              if(a_state.state==hateb_local_planner::AgentState::MOVING){
+                a_state.state = hateb_local_planner::AgentState::STOPPED;
+              }              
+            }
           }
         }
         else{
-          agent_still.push_back(false);
+          agent_still[tracked_agents_.agents[i].track_id] = false;
         }
       }
     }
   }
   prev_tracked_agents_ = tracked_agents_;
 
+  //Update different things based on visible ids
   std::vector<std::pair<double,int>> temp_dist_idx;
-  visible_agent_ids.clear();
   isDistMax = true;
-  for(int i=0;i<agent_dists.size();i++){
-    auto dist = agent_dists[i];
-    current_agent_dist = agent_dists[0];
-    if(dist<10.0 && agents_behind[i] >= 0.0){
+  for(int i=0;i<visible_agent_ids.size();i++){
+    auto idx = visible_agent_ids[i];
+    auto dist = agent_dists[idx];
+    if(dist<10.0 && agents_behind[idx] >= 0.0){
       isDistMax = false;
-      temp_dist_idx.push_back(std::make_pair(dist,i));
+      temp_dist_idx.push_back(std::make_pair(dist,idx));
+    }
+    if((int)tracked_agents_.agents[idx].type==1)
+      agents_radii[idx] = cfg_.agent.radius;
+    else
+      agents_radii[idx] = cfg_.agent.robot_radius;
+
+    for (auto &a_state: agents_states_.agents_states){
+      if(idx == _following_id){
+        a_state.state = hateb_local_planner::AgentState::MOVING;
+        continue;
+      }
+      if(a_state.track_id == idx)
+      {
+        if(a_state.state==hateb_local_planner::AgentState::NO_STATE){
+          a_state.state = hateb_local_planner::AgentState::STATIC;
+        }              
+      }
     }
   }
 
+  // Sort the visible ids based on distance
   if(temp_dist_idx.size()>0){
-    std::sort(temp_dist_idx.begin(),temp_dist_idx.end());
-
+    std::sort(temp_dist_idx.begin(),temp_dist_idx.end());  
     if(agent_dists[temp_dist_idx[0].second]<=2.5){
       isDistunderThreshold = true;
       }
@@ -449,81 +484,94 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
     }
   }
 
-   if(!stuck){
-    int n=1000;
-    if(temp_dist_idx.size()>=5)
-      n=100;
-    for(int it=0;it<temp_dist_idx.size();it++){
-      //Ray Tracing
-      double tm_x = tracked_agents_.agents[temp_dist_idx[it].second].segments[0].pose.pose.position.x;
-      double tm_y = tracked_agents_.agents[temp_dist_idx[it].second].segments[0].pose.pose.position.y;
-      auto Dx = (tm_x-xpos)/n;
-      auto Dy = (tm_y-ypos)/n;
+  //Reassign the sorted ids to visible agents ids
+  visible_agent_ids.clear();
 
-      //Checking using raytracing
-      bool cell_collision = false;
-      double rob_x = xpos;
-      double rob_y = ypos;
-
-      for(int j=0;j<n;j++){
-        unsigned int mx;
-        unsigned int my;
-
-        double check_rad;
-        if((int)tracked_agents_.agents[temp_dist_idx[it].second].type==1)
-          check_rad = cfg_.agent.radius+0.1;
-        else
-          check_rad = cfg_.agent.robot_radius+0.1;
-
-        if(sqrt((rob_x-tm_x)*(rob_x-tm_x)+(rob_y-tm_y)*(rob_y-tm_y)) <= check_rad)
-          break;
-        if( costmap_->worldToMap(rob_x,rob_y,mx,my)){
-          auto cellcost = costmap_->getCost(mx,my);
-          if((int)cellcost>200 && (int)cellcost<255){
-            cell_collision = true;
-            break;
-          }
-          rob_x += Dx;
-          rob_y += Dy;
-        }
-      }
-      int hum_id = temp_dist_idx[it].second;
-
-      if(hum_id == _following_id){
-        agents_states_.states[hum_id] = hateb_local_planner::AgentState::MOVING;
-        continue;
-      }
-
-      if(!cell_collision)
-			{
-        visible_agent_ids.push_back(hum_id);
-        if((int)tracked_agents_.agents[hum_id].type==1)
-          agents_radii.push_back(cfg_.agent.radius);
-        else
-          agents_radii.push_back(cfg_.agent.robot_radius);
-
-				if(agents_states_.states[hum_id]==hateb_local_planner::AgentState::NO_STATE){
-					agents_states_.states[hum_id] = hateb_local_planner::AgentState::STATIC;
-				}
-			}
-    }
+  for(int it=0;it<temp_dist_idx.size();it++){
+    int hum_id = temp_dist_idx[it].second;
+    visible_agent_ids.push_back(hum_id);
   }
-  else{
-    for(int it=0;it<2 && it<temp_dist_idx.size();it++){
-      if(temp_dist_idx[it].second == stuck_agent_id){
-        int hum_id = temp_dist_idx[it].second;
-        if(hum_id == _following_id)
-          continue;
-        visible_agent_ids.push_back(hum_id);
 
-        if((int)tracked_agents_.agents[hum_id].type==1)
-          agents_radii.push_back(cfg_.agent.radius);
-        else
-          agents_radii.push_back(cfg_.agent.robot_radius);
-        break;
-      }
-    }
-  }
+  /*
+  // Since Tracked agents are obtained from first person view --> No need for the below code
+  //
+  */
+
+  //  if(!stuck){
+  //   int n=1000;
+  //   if(temp_dist_idx.size()>=5)
+  //     n=100;
+  //   for(int it=0;it<temp_dist_idx.size();it++){
+  //     //Ray Tracing
+  //     double tm_x = tracked_agents_.agents[temp_dist_idx[it].second].segments[0].pose.pose.position.x;
+  //     double tm_y = tracked_agents_.agents[temp_dist_idx[it].second].segments[0].pose.pose.position.y;
+  //     auto Dx = (tm_x-xpos)/n;
+  //     auto Dy = (tm_y-ypos)/n;
+
+  //     //Checking using raytracing
+  //     bool cell_collision = false;
+  //     double rob_x = xpos;
+  //     double rob_y = ypos;
+
+  //     for(int j=0;j<n;j++){
+  //       unsigned int mx;
+  //       unsigned int my;
+
+  //       double check_rad;
+  //       if((int)tracked_agents_.agents[temp_dist_idx[it].second].type==1)
+  //         check_rad = cfg_.agent.radius+0.1;
+  //       else
+  //         check_rad = cfg_.agent.robot_radius+0.1;
+
+  //       if(sqrt((rob_x-tm_x)*(rob_x-tm_x)+(rob_y-tm_y)*(rob_y-tm_y)) <= check_rad)
+  //         break;
+  //       if( costmap_->worldToMap(rob_x,rob_y,mx,my)){
+  //         auto cellcost = costmap_->getCost(mx,my);
+  //         if((int)cellcost>200 && (int)cellcost<255){
+  //           cell_collision = true;
+  //           break;
+  //         }
+  //         rob_x += Dx;
+  //         rob_y += Dy;
+  //       }
+  //     }
+  //     int hum_id = temp_dist_idx[it].second;
+
+  //     if(hum_id == _following_id){
+  //       agents_states_.states[hum_id] = hateb_local_planner::AgentState::MOVING;
+  //       continue;
+  //     }
+
+  //     if(!cell_collision)
+	// 		{
+  //       visible_agent_ids.push_back(hum_id);
+  //       if((int)tracked_agents_.agents[hum_id].type==1)
+  //         agents_radii.push_back(cfg_.agent.radius);
+  //       else
+  //         agents_radii.push_back(cfg_.agent.robot_radius);
+
+	// 			if(agents_states_.states[hum_id]==hateb_local_planner::AgentState::NO_STATE){
+	// 				agents_states_.states[hum_id] = hateb_local_planner::AgentState::STATIC;
+	// 			}
+	// 		}
+  //   }
+  // }
+  // else{
+  //   for(int it=0;it<2 && it<temp_dist_idx.size();it++){
+  //     if(temp_dist_idx[it].second == stuck_agent_id){
+  //       int hum_id = temp_dist_idx[it].second;
+  //       if(hum_id == _following_id)
+  //         continue;
+  //       visible_agent_ids.push_back(hum_id);
+
+  //       if((int)tracked_agents_.agents[hum_id].type==1)
+  //         agents_radii.push_back(cfg_.agent.radius);
+  //       else
+  //         agents_radii.push_back(cfg_.agent.robot_radius);
+  //       break;
+  //     }
+  //   }
+  // }
 
     // Safety step for agents if agent_layers is not added in local costmap
     // Adds a temporary costmap around the agents to let planner plan safe trajectories
@@ -597,8 +645,9 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   }
 
   if(reset_states){
-    for(int i=0;i<agents_states_.states.size();i++){
-      agents_states_.states[i]=hateb_local_planner::AgentState::NO_STATE;
+    for(auto &a_state: agents_states_.agents_states){
+      a_state.state = hateb_local_planner::AgentState::NO_STATE;
+      // agents_states_.states[i]=hateb_local_planner::AgentState::NO_STATE;
       //agents_states_.states[i]=hateb_local_planner::AgentState::STATIC;
     }
     reset_states=false;
@@ -644,7 +693,11 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
           if(!stuck)
             ROS_INFO("I am stuck");
           stuck = true;
-          agents_states_.states[visible_agent_ids[0]] = hateb_local_planner::AgentState::BLOCKED;
+          // agents_states_.agents_states[] = hateb_local_planner::AgentState::BLOCKED;
+           for(auto &a_state: agents_states_.agents_states){
+            if(visible_agent_ids[0] == a_state.track_id)
+              a_state.state = hateb_local_planner::AgentState::BLOCKED;
+          }
           stuck_agent_id = visible_agent_ids[0];
           isMode = 2;
         }
@@ -811,8 +864,16 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
             backed_off = false;
             stuck = false;
             // goal_ctrl = true;
-            if(agents_states_.states[visible_agent_ids[0]] != hateb_local_planner::AgentState::MOVING)
-	             agents_states_.states[visible_agent_ids[0]] = hateb_local_planner::AgentState::STATIC;
+            for(auto &a_state: agents_states_.agents_states){
+              if(visible_agent_ids[0] == a_state.track_id){
+                if(a_state.state != hateb_local_planner::AgentState::MOVING){
+                  a_state.state != hateb_local_planner::AgentState::STATIC;
+                }
+              }
+            }
+            
+          //   if(agents_states_.agents_states[visible_agent_ids[0]] != hateb_local_planner::AgentState::MOVING)
+	        //      agents_states_.agents_states[visible_agent_ids[0]] = hateb_local_planner::AgentState::STATIC;
           }
         }
         else
@@ -827,8 +888,15 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
       change_mode = 0;
       backed_off = false;
       stuck = false;
-      if(agents_states_.states[visible_agent_ids[0]] != hateb_local_planner::AgentState::MOVING)
-         agents_states_.states[visible_agent_ids[0]] = hateb_local_planner::AgentState::STATIC;
+      // if(agents_states_.agents_states[visible_agent_ids[0]] != hateb_local_planner::AgentState::MOVING)
+      //    agents_states_.agents_states[visible_agent_ids[0]] = hateb_local_planner::AgentState::STATIC;
+      for(auto &a_state: agents_states_.agents_states){
+        if(visible_agent_ids[0] == a_state.track_id){
+          if(a_state.state != hateb_local_planner::AgentState::MOVING){
+            a_state.state != hateb_local_planner::AgentState::STATIC;
+          }
+        }
+      }
     }
 
     agent_path_prediction::AgentPosePredict predict_srv;
@@ -841,13 +909,17 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
 
     for(int i=0;i<2 && i<visible_agent_ids.size();i++){
-      if((int)agents_states_.states[visible_agent_ids[i]]>1){
-        predict_srv.request.ids.push_back(visible_agent_ids[i]);
-        if(isMode==-1)
-          isMode = 0;
-      }
-      else{
-        static_agents_ids.push_back(visible_agent_ids[i]);
+      for(auto &a_state: agents_states_.agents_states){
+        if(visible_agent_ids[i] == a_state.track_id){              
+          if((int)a_state.state>1){
+            predict_srv.request.ids.push_back(visible_agent_ids[i]);
+            if(isMode==-1)
+              isMode = 0;
+          }
+          else{
+            static_agents_ids.push_back(visible_agent_ids[i]);
+          }
+        }
       }
     }
 
@@ -1175,10 +1247,6 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
   double ttg = std::hypot(transformed_plan.back().pose.position.x - transformed_plan.front().pose.position.x,
                 transformed_plan.back().pose.position.y - transformed_plan.front().pose.position.y)/std::hypot(robot_vel_.linear.x,robot_vel_.linear.y);
-  
-  std_msgs::Float32 ttg_msg; 
-  ttg_msg.data = ttg;
-  ttg_pub_.publish(ttg_msg);
 
   // Undo temporary horizon reduction
   auto hr2_start_time = ros::Time::now();
@@ -1316,7 +1384,7 @@ bool HATebLocalPlannerROS::isGoalReached()
     stuck = false;
     goal_ctrl = true;
     agent_still.clear();
-    agents_states_.states.clear();
+    agents_states_.agents_states.clear();
     // states_.states.clear();
     isDistunderThreshold = false;
     backed_off =  false;
@@ -2017,6 +2085,7 @@ bool HATebLocalPlannerROS::transformAgentPlan(
           }
         }
       }
+      std::cout << agent_pose.pose.pose.orientation << "\n";
       tf2::fromMsg(agent_pose.pose.pose, tf_pose);
       tf_pose_stamped.setData(agent_plan_to_global_transform_ * tf_pose);
       tf_pose_stamped.stamp_ = agent_plan_to_global_transform_.stamp_;

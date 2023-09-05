@@ -1,1 +1,1 @@
-int8[] states
+AgentState[] agents_states

@@ -489,6 +489,10 @@ void  HATebLocalPlannerROS::agentsCB(const cohan_msgs::TrackedAgents &tracked_ag
 
   for(int it=0;it<temp_dist_idx.size();it++){
     int hum_id = temp_dist_idx[it].second;
+    if(hum_id == _following_id) 
+    {
+      continue;
+    }
     visible_agent_ids.push_back(hum_id);
   }
 
@@ -971,13 +975,14 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
     }
 
     if (predict_agents_client_ && predict_agents_client_.call(predict_srv)) {
+
       tf2::Stamped<tf2::Transform> tf_agent_plan_to_global;
 
         for(int indx=0; indx < static_agents_ids.size();indx++){
           geometry_msgs::Twist empty_vel;
           geometry_msgs::PoseStamped current_hpose;
           current_hpose.header.frame_id = "static";
-          current_hpose.pose = agents_[static_agents_ids[indx]-1];
+          current_hpose.pose = agents_[static_agents_ids[indx]];
 
           PlanStartVelGoalVel plan_start_vel_goal_vel;
           plan_start_vel_goal_vel.plan.push_back(current_hpose);
@@ -2085,7 +2090,6 @@ bool HATebLocalPlannerROS::transformAgentPlan(
           }
         }
       }
-      std::cout << agent_pose.pose.pose.orientation << "\n";
       tf2::fromMsg(agent_pose.pose.pose, tf_pose);
       tf_pose_stamped.setData(agent_plan_to_global_transform_ * tf_pose);
       tf_pose_stamped.stamp_ = agent_plan_to_global_transform_.stamp_;

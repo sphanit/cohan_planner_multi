@@ -470,7 +470,6 @@ bool AgentPathPrediction::predictAgentsVelObs(
         tf::Vector3 linear_vel(segment.twist.twist.linear.x,
                                segment.twist.twist.linear.y,
                                segment.twist.twist.linear.z);
-
         for (auto predict_time : req.predict_times) {
           // validate prediction time
           if (predict_time < 0) {
@@ -1229,7 +1228,6 @@ bool AgentPathPrediction::transformPoseTwist(
           twist.header.frame_id = tracked_agents.header.frame_id;
           twist.twist = segment.twist.twist;
           try {
-            std::cout << "I am here" << "\n";
             tf::Stamped<tf::Pose> pose_tf;
             tf::poseStampedMsgToTF(pose_ut, pose_tf);
             tf::StampedTransform start_pose_to_plan_transform;

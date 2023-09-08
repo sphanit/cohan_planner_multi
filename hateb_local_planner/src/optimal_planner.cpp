@@ -351,14 +351,16 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
     agents_tebs_map_.clear();
     break;
   case 1: {
-    auto itr = agents_tebs_map_.begin();
-    while (itr != agents_tebs_map_.end()) {
-      if (initial_agent_plan_vel_map->find(itr->first) ==
-          initial_agent_plan_vel_map->end())
-        itr = agents_tebs_map_.erase(itr);
-      else
-        ++itr;
-    }
+    agents_tebs_map_.clear();
+
+    // auto itr = agents_tebs_map_.begin();
+    // while (itr != agents_tebs_map_.end()) {
+    //   if (initial_agent_plan_vel_map->find(itr->first) ==
+    //       initial_agent_plan_vel_map->end())
+    //     itr = agents_tebs_map_.erase(itr);
+    //   else
+    //     ++itr;
+    // }
 
     static_agents.clear();
 

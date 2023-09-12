@@ -71,6 +71,7 @@
 #include <cohan_msgs/TrackedAgents.h>
 #include <cohan_msgs/TrackedSegmentType.h>
 #include <std_msgs/ColorRGBA.h>
+#include <std_msgs/Float32.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <tf/transform_datatypes.h>
@@ -310,6 +311,7 @@ protected:
   ros::Subscriber tracked_agents_sub_;
   std::vector<double> vel_robot, vel_agent;
   tf::TransformListener tf_;
+  ros::Publisher ttg_pub_;
   std::string ns_; //Name space of the robot
 
 

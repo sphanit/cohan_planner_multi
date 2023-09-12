@@ -119,6 +119,7 @@ void TebVisualization::initialize(ros::NodeHandle& nh, const HATebConfig& cfg)
   mode_text_pub = nh.advertise<visualization_msgs::Marker>("mode_text", 1);
   robot_next_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>("robot_next_pose", 1);
   agent_next_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>("agent_next_pose", 1);
+  ttg_pub_ = nh.advertise<std_msgs::Float32>("time_to_goal",10);
 
   last_publish_robot_global_plan =
       cfg_->visualization.publish_robot_global_plan;
@@ -384,6 +385,10 @@ void TebVisualization::publishTrajectory(
   robot_time_to_goal_full.time_to_goal =
       robot_time_to_goal.time_to_goal +
       ros::Duration(remaining_path_dist / cfg_->robot.max_vel_x);
+	
+  std_msgs::Float32 ttg_msg;
+  ttg_msg.data = robot_time_to_goal_full.time_to_goal.toSec();
+  ttg_pub_.publish(ttg_msg);
 
   if(!trajectory.points.empty()) {
     local_traj_pub_.publish(trajectory);

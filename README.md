@@ -16,6 +16,7 @@
 	```
 4. Source (need to do it in every terminal - you can add it to .bashrc otherwise) 
 	```
+ 	cd ../..
 	source devel/setup.bash
 	```
 	Make sure you are in cohan_multi_ws before running the above command.

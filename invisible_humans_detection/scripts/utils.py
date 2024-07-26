@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # Brief: Some utility functions
 # Author: Phani Teja Singamaneni
 
@@ -45,3 +45,6 @@ def worldTomap(wx, wy, info):
 def getIndex(mx, my, info):
   size_x = info.width
   return my * size_x + mx;
+
+def norm2D(a, b):
+  return np.linalg.norm([a[0]-b[0],a[1]-b[1]])

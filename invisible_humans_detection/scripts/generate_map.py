@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 def read_map(name):
     map = open(name+'.pgm','rb')
@@ -26,4 +26,4 @@ def read_map(name):
     new_map.close()
     map.close()
 
-read_map('../maps/laas_adream')
+read_map('../maps/bremen_kitchen')

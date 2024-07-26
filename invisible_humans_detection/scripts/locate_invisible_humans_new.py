@@ -8,13 +8,13 @@ import tf2_ros
 import math
 import tf2_geometry_msgs
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import PoseStamped, Point, Point32, QuaternionStamped, Quaternion
+from geometry_msgs.msg import PoseStamped, Point32, Quaternion, PoseArray
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import OccupancyGrid
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
-from tf.transformations import quaternion_from_euler
+from transformations import quaternion_from_euler
 from utils import *
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 class InvisibleHumans(object):
@@ -35,8 +35,10 @@ class InvisibleHumans(object):
 
     rospy.Subscriber('/map_scanner/map_scan', LaserScan, self.laserCB)
     rospy.Subscriber("/map", OccupancyGrid, self.mapCB)
-    self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray, queue_size = 100)
-    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg, queue_size = 100)
+    self.pub_invis_human_viz = rospy.Publisher('invisible_humans_markers', MarkerArray,  queue_size=10, latch=True)
+    self.pub_invis_human = rospy.Publisher('/move_base/HATebLocalPlannerROS/invisible_humans', ObstacleArrayMsg,  queue_size=10, latch=True)
+    self.pub_invis_human_corners = rospy.Publisher('invisible_humans_corners', PoseArray,  queue_size=10, latch=True)
+    self.pub_invis_humans_pos_ = rospy.Publisher('invisible_humans', PoseArray,  queue_size=10, latch=True)
 
 
     #Intialize tf2 transform listener
@@ -63,7 +65,7 @@ class InvisibleHumans(object):
     self.mid_scan = scan.ranges[int(len(scan.ranges)/2)]
     for i in range(0,len(scan.ranges)):
       angle = scan.angle_min + (i * scan.angle_increment)
-      if abs(angle) < 1.3:
+      if abs(angle) < 1.57:
         self.x_vis[len(self.x_vis):] = [scan.ranges[i]*np.cos(angle)]
         self.y_vis[len(self.y_vis):] = [scan.ranges[i]*np.sin(angle)]
         idx = len(self.x_vis) - 1
@@ -71,7 +73,7 @@ class InvisibleHumans(object):
           dist = np.linalg.norm([prev_point[0]-self.x_vis[idx], prev_point[1]-self.y_vis[idx]])
           check = (abs(prev_point[0]-self.x_vis[idx]) >= 0.5 or abs(prev_point[1]-self.y_vis[idx]) >= 0.5)
           under_rad = min(np.linalg.norm([self.x_vis[idx], self.y_vis[idx]]), np.linalg.norm([prev_point[0], prev_point[1]]))
-          if(dist>0.15 and under_rad<=5.0 and check):
+          if(dist>0.15 and under_rad<=2.0 and check):
             if(np.linalg.norm([prev_point[0], prev_point[1]]) < np.linalg.norm([self.x_vis[idx], self.y_vis[idx]])):
               self.corners[0][len(self.corners[0]):] = [prev_point[0]]
               self.corners[1][len(self.corners[1]):] = [prev_point[1]]
@@ -104,7 +106,7 @@ class InvisibleHumans(object):
 
     obstacle_msg = ObstacleArrayMsg()
     obstacle_msg.header.stamp = rospy.Time.now()
-    obstacle_msg.header.frame_id = "odom" # CHANGE HERE: odom/map
+    obstacle_msg.header.frame_id = "map" # CHANGE HERE: odom/map
 
     for i in range(0,len(humans)):
       # Add point obstacle
@@ -145,10 +147,17 @@ class InvisibleHumans(object):
     #   z: 0.0
     #   w: 1.0
     self.centers = [[],[]]
-    center_points = []
+    corner_array = PoseArray()
+    corner_array.header.stamp = rospy.Time.now()
+    corner_array.header.frame_id = "map"
+    inv_array = PoseArray()
+    inv_array.header.stamp = rospy.Time.now()
+    inv_array.header.frame_id = "map"
     marker_array = MarkerArray()
     inv_humans = []
     m_id = 0
+    point_transform = self.tf.lookup_transform("map", "base_footprint", rospy.Time(0),rospy.Duration(0.3))
+
     if len(self.map) > 1 and len(self.corners[0])>0:
       for i in range(0,len(self.corners[0])):
         x = self.corners[0][i]
@@ -216,7 +225,6 @@ class InvisibleHumans(object):
             robot_pose.pose.position.y = 0.0
             robot_pose.pose.orientation.w = 1
 
-            point_transform = self.tf.lookup_transform("map", "base_footprint", rospy.Time(),rospy.Duration(0.3))
             p1 = tf2_geometry_msgs.do_transform_pose(in_pose_l, point_transform)
             p2 = tf2_geometry_msgs.do_transform_pose(in_pose_r, point_transform)
             p3 = tf2_geometry_msgs.do_transform_pose(in_pose_temp, point_transform)
@@ -257,9 +265,18 @@ class InvisibleHumans(object):
         if remove_detection:
           continue
 
+
         self.centers[0][len(self.centers[0]):] = [pt[0]]
         self.centers[1][len(self.centers[1]):] = [pt[1]]
 
+
+        _c_pose = PoseStamped()
+        _c_pose.header.frame_id = "base_footprint"
+        _c_pose.pose.position.x = x
+        _c_pose.pose.position.y = y
+        _c_pose.pose.orientation.w = 1
+        corner_pos = tf2_geometry_msgs.do_transform_pose(_c_pose, point_transform)
+        corner_array.poses.append(corner_pos.pose)
         # Filter the detections based on the 2D map using ray tracing
         # n_div = 50
         # Dx = (p4.pose.position.x - p3.pose.position.x)/n_div
@@ -286,6 +303,7 @@ class InvisibleHumans(object):
 
         yaw = math.atan2(1.5*math.sin(vec_ang), 1.5*math.cos(vec_ang))
         q = quaternion_from_euler(0,0,yaw)
+        _inv_pose = PoseStamped()
 
         arrow = Marker()
         arrow.header.frame_id = "map"
@@ -293,8 +311,13 @@ class InvisibleHumans(object):
         arrow.type = arrow.ARROW
         arrow.action = arrow.ADD
         arrow.pose.orientation = Quaternion(*q)
+        _inv_pose.pose.orientation = Quaternion(*q)
         arrow.pose.position.x = p3.pose.position.x
         arrow.pose.position.y = p3.pose.position.y
+        _inv_pose.pose.position.x = p3.pose.position.x
+        _inv_pose.pose.position.y = p3.pose.position.y
+        _inv_pose.pose.position.z = self.mid_scan
+        _inv_pose.pose.orientation.z = self.scan.ranges[self.opp_ang[i]]
         arrow.pose.position.z = 0.0
         t = rospy.Duration(0.1)
         arrow.lifetime = t
@@ -327,11 +350,14 @@ class InvisibleHumans(object):
 
         marker_array.markers.append(marker)
         marker_array.markers.append(arrow)
+        inv_array.poses.append(_inv_pose.pose)
       self.pub_invis_human_viz.publish(marker_array)
       self.publish_to_cohan_obstacles(inv_humans)
+      # self.pub_invis_human_corners.publish(corner_array)
+      self.pub_invis_humans_pos_.publish(inv_array)
       # self.save_contours()
       # self.pub_invis_human.publish(inv_humans)
-
+'''
   def save_contours(self):
     self.drawing = True
     # print(self.corners)
@@ -356,7 +382,7 @@ class InvisibleHumans(object):
         # self.data_counter += 1
         plt.clf()
     self.drawing = False
-
+'''
 
 
 if __name__ == '__main__':

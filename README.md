@@ -8,6 +8,7 @@
 	mkdir -p cohan_multi_ws/src
 	cd 	cohan_multi_ws/src
 	git clone https://github.com/sphanit/cohan_planner_multi.git -b noetic-devel
+ 	cd cohan_planner_multi
 	```
 3. Install the dependent packages and build
 	```

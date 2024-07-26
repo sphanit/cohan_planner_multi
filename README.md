@@ -12,7 +12,7 @@
 	```
 3. Install the dependent packages and build
 	```
-	./setup.sh
+	./setup_and_build.sh
 	```
 4. Source (need to do it in every terminal - you can add it to .bashrc otherwise) 
 	```

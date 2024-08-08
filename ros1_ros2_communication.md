@@ -27,11 +27,13 @@ This method uses the [rosbridge_suite](https://github.com/RobotWebTools/rosbridg
 2. Minimal example
 	a. Run the bridge on ros2 machine (it can be run on ros1 machine as well, but only one is required)
 	```
+	# Recommended
 	ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 	
-	# For ROS1 (NOT NEEDED if the above one is launched) 
+	# You can use ROS1 version also (NOT NEEDED if the above one is launched) 
 	roslaunch rosbridge_server rosbridge_websocket.launch 
 	``` 
+ 	
 	b. ROS2 Publisher
 	```python
 	import time

@@ -19,7 +19,7 @@ This method uses the [rosbridge_suite](https://github.com/RobotWebTools/rosbridg
 	pip install roslibpy
 	mkdir -p ros2_ws/src
 	cd ros2_ws/src
-	git clone https://github.com/DFKI-NI/rospy_message_converter.git -b master
+	git clone https://github.com/DFKI-NI/rospy_message_converter.git -b humble
 	cd .. 
 	colcon build
 	```
@@ -64,16 +64,16 @@ This method uses the [rosbridge_suite](https://github.com/RobotWebTools/rosbridg
 	from rospy_message_converter import message_converter
 	from geometry_msgs.msg import Twist
 
+ 	# Callback function
+	def print_msg(msg):
+		message = message_converter.convert_dictionary_to_ros_message('geometry_msgs/Twist', msg)
+		print(message)
+
 	# Enter the HOST IP Address to connect to ROS2 host
 	client = roslibpy.Ros(host=<HOST_IP>, port=9090)
 	client.run()
 	listener = roslibpy.Topic(client,'/cmd_vel','geometry_msgs/Twist')
 	listener.subscribe(print_msg) # print_msg is the callback function for subscriber
-	
-	# Callback function
-	def print_msg(msg):
-		message = message_converter.convert_dictionary_to_ros_message('geometry_msgs/Twist', msg)
-		print(message)
 
 	# Looping
 	try:	

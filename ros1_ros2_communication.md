@@ -86,6 +86,11 @@ This method uses the [rosbridge_suite](https://github.com/RobotWebTools/rosbridg
 3. You should be able to see this on your terminals
    
    On Ubuntu 22.04
-   ![](https://github.com/sphanit/cohan_planner_multi/blob/noetic-devel/bridge_and_talk.png).
+
+   <img src="https://github.com/sphanit/cohan_planner_multi/blob/noetic-devel/bridge_and_talk.png" width="800"  />
 
    On Ubuntu 20.04
+
+   <img src="https://github.com/sphanit/cohan_planner_multi/blob/noetic-devel/listen.png" width="600" />
+
+

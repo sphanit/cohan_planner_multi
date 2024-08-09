@@ -89,4 +89,3 @@ This method uses the [rosbridge_suite](https://github.com/RobotWebTools/rosbridg
    ![](https://github.com/sphanit/cohan_planner_multi/blob/noetic-devel/bridge_and_talk.png).
 
    On Ubuntu 20.04
-   ![](https://github.com/sphanit/cohan_planner_multi/blob/noetic-devel/listen.png).

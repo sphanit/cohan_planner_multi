@@ -35,21 +35,19 @@
  * Author: Phani Teja Singamaneni (email:ptsingaman@laas.fr)
  *********************************************************************/
 
+#include <angles/angles.h>
 #include <cohan_layers/static_agent_layer.h>
 #include <pluginlib/class_list_macros.h>
-#include <angles/angles.h>
 #include <tf2_eigen/tf2_eigen.h>
 
 PLUGINLIB_EXPORT_CLASS(cohan_layers::StaticAgentLayer, costmap_2d::Layer)
 
-using costmap_2d::NO_INFORMATION;
-using costmap_2d::LETHAL_OBSTACLE;
 using costmap_2d::FREE_SPACE;
+using costmap_2d::LETHAL_OBSTACLE;
+using costmap_2d::NO_INFORMATION;
 
-namespace cohan_layers
-{
-void StaticAgentLayer::onInitialize()
-{
+namespace cohan_layers {
+void StaticAgentLayer::onInitialize() {
   AgentLayer::onInitialize();
   ros::NodeHandle nh("~/" + name_), g_nh;
   nh.getParam("robot_radius", robot_radius);
@@ -59,48 +57,49 @@ void StaticAgentLayer::onInitialize()
   server_->setCallback(f_);
 }
 
-void StaticAgentLayer::updateBoundsFromAgents(double* min_x, double* min_y, double* max_x, double* max_y)
-{
+void StaticAgentLayer::updateBoundsFromAgents(double *min_x, double *min_y,
+                                              double *max_x, double *max_y) {
 
-  for(uint i=0;i<transformed_agents_.size();i++){
-    auto agent = transformed_agents_[i];
-    *min_x = std::min(*min_x, agent.pose.position.x - radius_);
-    *min_y = std::min(*min_y, agent.pose.position.y - radius_);
-    *max_x = std::max(*max_x, agent.pose.position.x + radius_);
-    *max_y = std::max(*max_y, agent.pose.position.y + radius_);
-}
+  for (auto &agent : transformed_agents_) {
+    // auto agent = transformed_agents_[i];
+    *min_x = std::min(*min_x, agent.second.pose.position.x - radius_);
+    *min_y = std::min(*min_y, agent.second.pose.position.y - radius_);
+    *max_x = std::max(*max_x, agent.second.pose.position.x + radius_);
+    *max_y = std::max(*max_y, agent.second.pose.position.y + radius_);
+  }
 }
 
-void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j)
-{
+void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D &master_grid,
+                                   int min_i, int min_j, int max_i, int max_j) {
   boost::recursive_mutex::scoped_lock lock(lock_);
-  if (!enabled_) return;
+  if (!enabled_)
+    return;
 
   if (agents_.agents.size() == 0)
     return;
 
-  costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
+  costmap_2d::Costmap2D *costmap = layered_costmap_->getCostmap();
   double res = costmap->getResolution();
 
-  for(uint i=0;i<transformed_agents_.size();i++){
-    auto agent = transformed_agents_[i];
+  auto it = transformed_agents_.begin();
+  for (uint i = 0; i < transformed_agents_.size(); i++) {
+    auto &agent = it->second;
 
-    bool check_one=false;
-    if(!states_.states.empty()){
-      if(((int)states_.states[i] < 2) && ((int)agents_.agents[i].type == 1)){
+    bool check_one = false;
+    if (!states_.states.empty()) {
+      if (((int)states_.states[it->first - 1] < 2) &&
+          ((int)agents_.agents[it->first - 1].type == 1)) {
         check_one = true;
-      }
-      else{
+      } else {
         check_one = false;
       }
-    }
-    else{
-      check_one = agents_.agents[i].type;
+    } else {
+      check_one = agents_.agents[it->first - 1].type;
     }
 
-    if(check_one){
-      unsigned int width = std::max(1, static_cast<int>((2*radius_) / res)),
-                   height = std::max(1, static_cast<int>((2*radius_) / res));
+    if (check_one) {
+      unsigned int width = std::max(1, static_cast<int>((2 * radius_) / res)),
+                   height = std::max(1, static_cast<int>((2 * radius_) / res));
 
       double cx = agent.pose.position.x, cy = agent.pose.position.y;
       double ox = cx - radius_, oy = cy - radius_;
@@ -129,15 +128,12 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
       if (static_cast<int>(end_y + my) > max_j)
         end_y = max_j - my;
 
-      double bx = ox + res / 2,
-             by = oy + res / 2;
+      double bx = ox + res / 2, by = oy + res / 2;
 
       double var = radius_;
 
-      for (int i = start_x; i < end_x; i++)
-      {
-        for (int j = start_y; j < end_y; j++)
-        {
+      for (int i = start_x; i < end_x; i++) {
+        for (int j = start_y; j < end_y; j++) {
           unsigned char old_cost = costmap->getCost(i + mx, j + my);
           if (old_cost == costmap_2d::NO_INFORMATION)
             continue;
@@ -145,26 +141,25 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
           double x = bx + i * res, y = by + j * res;
           double val;
           val = Gaussian2D(x, y, cx, cy, amplitude_, var, var);
-          double rad = sqrt(-2*var*log(val/amplitude_));
+          double rad = sqrt(-2 * var * log(val / amplitude_));
 
           if (rad > radius_)
             continue;
-          unsigned char cvalue = (unsigned char) val;
+          unsigned char cvalue = (unsigned char)val;
           costmap->setCost(i + mx, j + my, std::max(cvalue, old_cost));
         }
       }
     }
 
-    else{
+    else {
       double rad;
-      if(agents_.agents[i].type==1){
+      if (agents_.agents[it->first - 1].type == 1) {
         rad = agent_radius;
-      }
-      else{
+      } else {
         rad = robot_radius;
       }
-      unsigned int width = std::max(1, static_cast<int>((3*rad) / res)),
-                   height = std::max(1, static_cast<int>((3*rad) / res));
+      unsigned int width = std::max(1, static_cast<int>((3 * rad) / res)),
+                   height = std::max(1, static_cast<int>((3 * rad) / res));
 
       double cx = agent.pose.position.x, cy = agent.pose.position.y;
       double ox = cx - rad, oy = cy - rad;
@@ -193,40 +188,38 @@ void StaticAgentLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i
       if (static_cast<int>(end_y + my) > max_j)
         end_y = max_j - my;
 
-      for (int i = start_x; i < end_x; i++)
-      {
-        for (int j = start_y; j < end_y; j++)
-        {
+      for (int i = start_x; i < end_x; i++) {
+        for (int j = start_y; j < end_y; j++) {
           unsigned char old_cost = costmap->getCost(i + mx, j + my);
           if (old_cost == costmap_2d::NO_INFORMATION)
             continue;
 
           double x, y;
-          costmap->mapToWorld(i+mx, j+my, x, y);
-          x = x-cx, y=y-cy;
-          double inrad = sqrt(x*x+y*y);
+          costmap->mapToWorld(i + mx, j + my, x, y);
+          x = x - cx, y = y - cy;
+          double inrad = sqrt(x * x + y * y);
 
           if (inrad > rad)
             continue;
 
           double val;
-          if(agents_.agents[i].type==1)
-            val = 255;
-          else if(agents_.agents[i].type==0)
-            val = 255;
+          if (agents_.agents[it->first - 1].type == 1)
+            val = 254;
+          else if (agents_.agents[it->first - 1].type == 0)
+            val = 254;
 
-          unsigned char cvalue = (unsigned char) val;
+          unsigned char cvalue = (unsigned char)val;
           costmap->setCost(i + mx, j + my, std::max(cvalue, old_cost));
         }
       }
     }
+    it++;
   }
 }
 
-void StaticAgentLayer::configure(AgentLayerConfig &config, uint32_t level)
-{
+void StaticAgentLayer::configure(AgentLayerConfig &config, uint32_t level) {
   amplitude_ = config.amplitude;
   radius_ = config.radius;
   enabled_ = config.enabled;
 }
-};  // namespace cohan_layers
+}; // namespace cohan_layers

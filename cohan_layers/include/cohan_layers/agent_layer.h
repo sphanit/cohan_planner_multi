@@ -37,95 +37,90 @@
 
 #ifndef AGENT_LAYER_H
 #define AGENT_LAYER_H
-#include <ros/ros.h>
-#include <tf2/utils.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <boost/thread.hpp>
+#include <cohan_msgs/StateArray.h>
+#include <cohan_msgs/TrackedAgents.h>
+#include <cohan_msgs/TrackedSegmentType.h>
 #include <costmap_2d/layer.h>
 #include <costmap_2d/layered_costmap.h>
-#include <cohan_msgs/TrackedAgents.h>
-#include <cohan_msgs/StateArray.h>
-#include <cohan_msgs/TrackedSegmentType.h>
 #include <dynamic_reconfigure/server.h>
-#include <boost/thread.hpp>
+#include <ros/ros.h>
 #include <std_srvs/SetBool.h>
+#include <tf2/utils.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
-namespace cohan_layers
-{
-class AgentLayer : public costmap_2d::Layer
-{
+namespace cohan_layers {
+class AgentLayer : public costmap_2d::Layer {
 public:
-  AgentLayer()
-  {
-    layered_costmap_ = NULL;
-  }
+  AgentLayer() { layered_costmap_ = NULL; }
 
   virtual void onInitialize();
-  virtual void updateBounds(double origin_x, double origin_y, double origin_yaw, double* min_x, double* min_y,
-                            double* max_x, double* max_y);
-  virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) = 0;
+  virtual void updateBounds(double origin_x, double origin_y, double origin_yaw,
+                            double *min_x, double *min_y, double *max_x,
+                            double *max_y);
+  virtual void updateCosts(costmap_2d::Costmap2D &master_grid, int min_i,
+                           int min_j, int max_i, int max_j) = 0;
 
-  virtual void updateBoundsFromAgents(double* min_x, double* min_y, double* max_x, double* max_y) = 0;
+  virtual void updateBoundsFromAgents(double *min_x, double *min_y,
+                                      double *max_x, double *max_y) = 0;
 
-  bool isDiscretized()
-  {
-    return false;
-  }
+  bool isDiscretized() { return false; }
 
 protected:
-  struct AgentPoseVel{
+  struct AgentPoseVel {
     std_msgs::Header header;
     geometry_msgs::Pose pose;
     geometry_msgs::Twist velocity;
   };
 
-  void agentsCB(const cohan_msgs::TrackedAgents& agents);
+  void agentsCB(const cohan_msgs::TrackedAgents &agents);
 
-  void statesCB(const cohan_msgs::StateArray& states);
+  void statesCB(const cohan_msgs::StateArray &states);
 
-  bool shutdownCB(std_srvs::SetBoolRequest&req, std_srvs::SetBoolResponse &res);
+  bool shutdownCB(std_srvs::SetBoolRequest &req,
+                  std_srvs::SetBoolResponse &res);
 
-  double Guassian1D(double x, double x0, double A, double varx){
-    double dx = x-x0;
-    return A*exp(-pow(dx,2.0)/(2.0*varx));
+  double Guassian1D(double x, double x0, double A, double varx) {
+    double dx = x - x0;
+    return A * exp(-pow(dx, 2.0) / (2.0 * varx));
   }
 
-  double Gaussian2D(double x, double y, double x0, double y0, double A, double varx, double vary)
-  {
+  double Gaussian2D(double x, double y, double x0, double y0, double A,
+                    double varx, double vary) {
     double dx = x - x0, dy = y - y0;
     double d = sqrt(dx * dx + dy * dy);
     double theta = atan2(dy, dx);
-    double X = d*cos(theta), Y = d*sin(theta);
-    return A/std::max(d,1.0) * Guassian1D(X,0.0,1.0,varx) * Guassian1D(Y,0.0,1.0,vary);
+    double X = d * cos(theta), Y = d * sin(theta);
+    return A / std::max(d, 1.0) * Guassian1D(X, 0.0, 1.0, varx) *
+           Guassian1D(Y, 0.0, 1.0, vary);
   }
 
-  double Gaussian2D_skewed(double x, double y, double x0, double y0, double A, double varx, double vary, double skew_ang)
-  {
+  double Gaussian2D_skewed(double x, double y, double x0, double y0, double A,
+                           double varx, double vary, double skew_ang) {
     double dx = x - x0, dy = y - y0;
     double d = sqrt(dx * dx + dy * dy);
     double theta = atan2(dy, dx);
-    double X = d*cos(theta-skew_ang), Y = d*sin(theta-skew_ang);
-    return A/std::max(d,1.0) * Guassian1D(X,0.0,1.0,varx) * Guassian1D(Y,0.0,1.0,vary);
+    double X = d * cos(theta - skew_ang), Y = d * sin(theta - skew_ang);
+    return A / std::max(d, 1.0) * Guassian1D(X, 0.0, 1.0, varx) *
+           Guassian1D(Y, 0.0, 1.0, vary);
   }
 
-  double getRadius(double cutoff, double A, double var)
-  {
+  double getRadius(double cutoff, double A, double var) {
     return sqrt(-2 * var * log(cutoff / A));
   }
-
 
   ros::Subscriber agents_sub_, agents_states_sub_;
   ros::ServiceServer stopmap_srv;
   cohan_msgs::TrackedAgents agents_;
   cohan_msgs::StateArray states_;
-  std::vector<AgentPoseVel> transformed_agents_;
+  std::map<int, AgentPoseVel> transformed_agents_;
   boost::recursive_mutex lock_;
   bool first_time_, reset, shutdown_;
   ros::Time last_time;
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
   double radius_, amplitude_, covar_, cutoff_;
-  double robot_radius = 0.46, agent_radius=0.31;
-
+  double robot_radius = 0.46, agent_radius = 0.31;
 };
-}  // namespace cohan_layers
+} // namespace cohan_layers
 
-#endif  // AGENT_LAYERS_H
+#endif // AGENT_LAYERS_H

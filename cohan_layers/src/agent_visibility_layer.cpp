@@ -35,20 +35,18 @@
  * Author: Phani Teja Singamaneni (email:ptsingaman@laas.fr)
  *********************************************************************/
 
-#include <cohan_layers/agent_visibility_layer.h>
 #include <angles/angles.h>
+#include <cohan_layers/agent_visibility_layer.h>
 #include <pluginlib/class_list_macros.h>
 #include <tf2_eigen/tf2_eigen.h>
 #define DEFAULT_AGENT_PART cohan_msgs::TrackedSegmentType::TORSO
 
-using costmap_2d::NO_INFORMATION;
-using costmap_2d::LETHAL_OBSTACLE;
 using costmap_2d::FREE_SPACE;
+using costmap_2d::LETHAL_OBSTACLE;
+using costmap_2d::NO_INFORMATION;
 
-namespace cohan_layers
-{
-void AgentVisibilityLayer::onInitialize()
-{
+namespace cohan_layers {
+void AgentVisibilityLayer::onInitialize() {
   AgentLayer::onInitialize();
   ros::NodeHandle nh("~/" + name_), g_nh;
   server_ = new dynamic_reconfigure::Server<AgentVLayerConfig>(nh);
@@ -56,41 +54,44 @@ void AgentVisibilityLayer::onInitialize()
   server_->setCallback(f_);
 }
 
-void AgentVisibilityLayer::updateBoundsFromAgents(double* min_x, double* min_y, double* max_x, double* max_y)
-{
+void AgentVisibilityLayer::updateBoundsFromAgents(double *min_x, double *min_y,
+                                                  double *max_x,
+                                                  double *max_y) {
 
-  for(uint i=0;i<transformed_agents_.size();i++){
-    auto agent = transformed_agents_[i];
-    *min_x = std::min(*min_x, agent.pose.position.x - radius_);
-    *min_y = std::min(*min_y, agent.pose.position.y - radius_);
-    *max_x = std::max(*max_x, agent.pose.position.x + radius_);
-    *max_y = std::max(*max_y, agent.pose.position.y + radius_);
+  for (auto &agent : transformed_agents_) {
+    *min_x = std::min(*min_x, agent.second.pose.position.x - radius_);
+    *min_y = std::min(*min_y, agent.second.pose.position.y - radius_);
+    *max_x = std::max(*max_x, agent.second.pose.position.x + radius_);
+    *max_y = std::max(*max_y, agent.second.pose.position.y + radius_);
   }
 }
 
-void AgentVisibilityLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j)
-{
+void AgentVisibilityLayer::updateCosts(costmap_2d::Costmap2D &master_grid,
+                                       int min_i, int min_j, int max_i,
+                                       int max_j) {
   boost::recursive_mutex::scoped_lock lock(lock_);
-  if (!enabled_) return;
+  if (!enabled_)
+    return;
 
   if (agents_.agents.size() == 0)
     return;
 
-  costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
+  costmap_2d::Costmap2D *costmap = layered_costmap_->getCostmap();
   double res = costmap->getResolution();
 
-  for(uint i=0;i<transformed_agents_.size();i++){
-    auto agent = transformed_agents_[i];
+  auto it = transformed_agents_.begin();
+  for (uint i = 0; i < transformed_agents_.size(); i++) {
+    auto &agent = it->second;
     double theta = tf2::getYaw(agent.pose.orientation);
-    Eigen::Vector2d orient_vec(std::cos(theta),std::sin(theta));
+    Eigen::Vector2d orient_vec(std::cos(theta), std::sin(theta));
 
-    if((int)agents_.agents[i].type == 1){
-      if(!states_.states.empty()){
-        if((int)states_.states[i] > 1)
+    if ((int)agents_.agents[it->first - 1].type == 1) {
+      if (!states_.states.empty()) {
+        if ((int)states_.states[it->first - 1] > 1)
           continue;
       }
-      unsigned int width = std::max(1, static_cast<int>((2*radius_) / res)),
-                   height = std::max(1, static_cast<int>((2*radius_) / res));
+      unsigned int width = std::max(1, static_cast<int>((2 * radius_) / res)),
+                   height = std::max(1, static_cast<int>((2 * radius_) / res));
 
       double cx = agent.pose.position.x, cy = agent.pose.position.y;
       double ox = cx - radius_, oy = cy - radius_;
@@ -119,15 +120,12 @@ void AgentVisibilityLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int m
       if (static_cast<int>(end_y + my) > max_j)
         end_y = max_j - my;
 
-      double bx = ox + res / 2,
-             by = oy + res / 2;
+      double bx = ox + res / 2, by = oy + res / 2;
 
       double var = radius_;
 
-      for (int i = start_x; i < end_x; i++)
-      {
-        for (int j = start_y; j < end_y; j++)
-        {
+      for (int i = start_x; i < end_x; i++) {
+        for (int j = start_y; j < end_y; j++) {
           unsigned char old_cost = costmap->getCost(i + mx, j + my);
           if (old_cost == costmap_2d::NO_INFORMATION)
             continue;
@@ -137,13 +135,13 @@ void AgentVisibilityLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int m
 
           val = Gaussian2D(x, y, cx, cy, amplitude_, var, var);
 
-          double rad = sqrt(-2*var*log(val/amplitude_));
-          Eigen::Vector2d pt_vec(x-cx,y-cy);
+          double rad = sqrt(-2 * var * log(val / amplitude_));
+          Eigen::Vector2d pt_vec(x - cx, y - cy);
 
           if (rad > radius_)
             continue;
-          unsigned char cvalue = (unsigned char) val;//std::min(5*val,254.0);
-          if(orient_vec.dot(pt_vec) <= 0)
+          unsigned char cvalue = (unsigned char)val; // std::min(5*val,254.0);
+          if (orient_vec.dot(pt_vec) <= 0)
             costmap->setCost(i + mx, j + my, std::max(cvalue, old_cost));
         }
       }
@@ -151,12 +149,12 @@ void AgentVisibilityLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int m
   }
 }
 
-void AgentVisibilityLayer::configure(AgentVLayerConfig &config, uint32_t level)
-{
+void AgentVisibilityLayer::configure(AgentVLayerConfig &config,
+                                     uint32_t level) {
   amplitude_ = config.amplitude;
   radius_ = config.radius;
   enabled_ = config.enabled;
 }
-};  // namespace cohan_layers
+}; // namespace cohan_layers
 
 PLUGINLIB_EXPORT_CLASS(cohan_layers::AgentVisibilityLayer, costmap_2d::Layer)

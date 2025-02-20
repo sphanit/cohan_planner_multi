@@ -9,8 +9,10 @@ from std_srvs.srv import Trigger, TriggerResponse
 
 LEFT = 901
 RIGHT = 180
-ROBOT_RADIUS = 0.35
-RANGE = 0.7
+ROBOT_RADIUS = 0.34
+SAFETY_OBS = 0.05
+RANGE = 1.0
+RANGE_MAX = 5.0
 
 class DockingCheck(object):
     def __init__(self) -> None:
@@ -25,23 +27,31 @@ class DockingCheck(object):
         self.scan_data = msg
     
     def get_docking_spot(self, req):
-        left = self.scan_data.ranges[LEFT] - ROBOT_RADIUS
-        right = self.scan_data.ranges[RIGHT] - ROBOT_RADIUS
+        left = self.scan_data.ranges[LEFT] - ROBOT_RADIUS - SAFETY_OBS
+        right = self.scan_data.ranges[RIGHT] - ROBOT_RADIUS - SAFETY_OBS
         
         if left > RANGE and right > RANGE:
             return TriggerResponse(success=True, message="l" + str(RANGE))
         
         if left > 0 and right > 0:
             if left < right:
-                return TriggerResponse(success=True, message="l" + str(left))
+                if right < RANGE_MAX:
+                    return TriggerResponse(success=True, message="l" + str(left))
+                else:
+                    return TriggerResponse(success=True, message="r" + str(RANGE))
             else:
-                return TriggerResponse(success=True, message="r" + str(right))
+                if left < RANGE_MAX:
+                    return TriggerResponse(success=True, message="r" + str(right))
+                else:
+                    return TriggerResponse(success=True, message="l" + str(RANGE))
             
         if left < 0 and right > 0:
-            return TriggerResponse(success=True, message="r" + str(right))
+            dist = min (right, RANGE)
+            return TriggerResponse(success=True, message="r" + str(dist))
                     
         if right < 0 and left > 0:
-            return TriggerResponse(success=True, message="l" + str(left))        
+            dist = min (left, RANGE)
+            return TriggerResponse(success=True, message="l" + str(dist))        
         
         return TriggerResponse(success=True, message="")        
     

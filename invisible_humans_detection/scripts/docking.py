@@ -5,11 +5,12 @@
 import rospy
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Trigger, TriggerResponse
+import numpy as np
 
 
 LEFT = 901
 RIGHT = 180
-ROBOT_RADIUS = 0.34
+ROBOT_RADIUS = 0.5
 SAFETY_OBS = 0.05
 RANGE = 1.0
 RANGE_MAX = 5.0
@@ -29,6 +30,10 @@ class DockingCheck(object):
     def get_docking_spot(self, req):
         left = self.scan_data.ranges[LEFT] - ROBOT_RADIUS - SAFETY_OBS
         right = self.scan_data.ranges[RIGHT] - ROBOT_RADIUS - SAFETY_OBS
+        
+        min_val = np.min(self.scan_data.ranges)
+        min_idx = np.index(self.scan_data.ranges[min_val])
+        print(min_idx)
         
         if left > RANGE and right > RANGE:
             return TriggerResponse(success=True, message="l" + str(RANGE))

@@ -31,10 +31,6 @@ class DockingCheck(object):
         left = self.scan_data.ranges[LEFT] - ROBOT_RADIUS - SAFETY_OBS
         right = self.scan_data.ranges[RIGHT] - ROBOT_RADIUS - SAFETY_OBS
         
-        min_val = np.min(self.scan_data.ranges)
-        min_idx = np.index(self.scan_data.ranges[min_val])
-        print(min_idx)
-        
         if left > RANGE and right > RANGE:
             return TriggerResponse(success=True, message="l" + str(RANGE))
         

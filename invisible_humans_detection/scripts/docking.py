@@ -13,7 +13,7 @@ RIGHT = 180
 ROBOT_RADIUS = 0.5
 SAFETY_OBS = 0.05
 RANGE = 1.0
-RANGE_MAX = 5.0
+RANGE_MAX = 2.0
 
 class DockingCheck(object):
     def __init__(self) -> None:

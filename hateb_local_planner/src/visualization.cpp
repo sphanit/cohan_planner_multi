@@ -559,6 +559,7 @@ void TebVisualization::publishCrossingPoses(
 
     crossing_info.times.push_back(times[min_index]);
     crossing_info.distances.push_back(*min_it);
+    crossing_info.indices.push_back(min_index);
 
     geometry_msgs::Pose pose;
     pose.position.x = teb.Pose(min_index).x();

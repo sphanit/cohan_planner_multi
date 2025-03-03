@@ -36,6 +36,7 @@ add_message_files( DIRECTORY msg
     AgentMarker.msg
     AgentMarkerStamped.msg
     PointArray.msg
+    CrossingInfo.msg
 )
 
 ## generate added messages and services with any dependencies listed here

@@ -130,6 +130,7 @@ void TebOptimalPlanner::visualize() {
   visualization_->publishLocalPlanAndPoses(teb_, *robot_model_, fp_size);
   visualization_->publishAgentLocalPlansAndPoses(agents_tebs_map_,
                                                  *agent_model_, fp_size);
+  visualization_->publishCrossingPoses(teb_, agents_tebs_map_);
 
   if (teb_.sizePoses() > 0)
     visualization_->publishRobotFootprintModel(teb_.Pose(0), *robot_model_);

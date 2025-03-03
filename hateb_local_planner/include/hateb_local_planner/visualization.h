@@ -45,8 +45,8 @@
 
 // teb stuff
 #include <hateb_local_planner/TrajectoryMsg.h>
-#include <hateb_local_planner/robot_footprint_model.h>
 #include <hateb_local_planner/hateb_config.h>
+#include <hateb_local_planner/robot_footprint_model.h>
 #include <hateb_local_planner/timed_elastic_band.h>
 
 // ros stuff
@@ -62,17 +62,18 @@
 #include <iterator>
 
 // messages
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <cohan_msgs/AgentPathArray.h>
 #include <cohan_msgs/AgentTimeToGoal.h>
 #include <cohan_msgs/AgentTimeToGoalArray.h>
 #include <cohan_msgs/AgentTrajectoryArray.h>
+#include <cohan_msgs/CrossingInfo.h>
 #include <cohan_msgs/TrackedAgents.h>
 #include <cohan_msgs/TrackedSegmentType.h>
-#include <std_msgs/ColorRGBA.h>
+#include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <std_msgs/ColorRGBA.h>
 #include <tf/transform_datatypes.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -111,8 +112,7 @@ class TebOptimalPlanner; //!< Forward Declaration
  * @class TebVisualization
  * @brief Visualize stuff from the hateb_local_planner
  */
-class TebVisualization
-{
+class TebVisualization {
 public:
   /**
    * @brief Default constructor
@@ -125,7 +125,7 @@ public:
    * @param nh local ros::NodeHandle
    * @param cfg const reference to the HATebConfig class for parameters
    */
-  TebVisualization(ros::NodeHandle& nh, const HATebConfig& cfg);
+  TebVisualization(ros::NodeHandle &nh, const HATebConfig &cfg);
 
   /**
    * @brief Initializes the class and registers topics.
@@ -134,7 +134,7 @@ public:
    * @param nh local ros::NodeHandle
    * @param cfg const reference to the HATebConfig class for parameters
    */
-  void initialize(ros::NodeHandle& nh, const HATebConfig& cfg);
+  void initialize(ros::NodeHandle &nh, const HATebConfig &cfg);
 
   /** @name Publish to topics */
   //@{
@@ -143,30 +143,40 @@ public:
    * @brief Publish a given global plan to the ros topic \e ../../global_plan
    * @param global_plan Pose array describing the global plan
    */
-  void publishGlobalPlan(const std::vector<geometry_msgs::PoseStamped>& global_plan) const;
-  void publishAgentGlobalPlans(const std::vector<AgentPlanCombined> &agents_plans) const;
+  void publishGlobalPlan(
+      const std::vector<geometry_msgs::PoseStamped> &global_plan) const;
+  void publishAgentGlobalPlans(
+      const std::vector<AgentPlanCombined> &agents_plans) const;
 
   /**
    * @brief Publish a given local plan to the ros topic \e ../../local_plan
    * @param local_plan Pose array describing the local plan
    */
-  void publishLocalPlan(const std::vector<geometry_msgs::PoseStamped>& local_plan) const;
-
+  void publishLocalPlan(
+      const std::vector<geometry_msgs::PoseStamped> &local_plan) const;
 
   void publishTrackedAgents(const cohan_msgs::TrackedAgentsConstPtr &agents);
 
   /**
-   * @brief Publish Timed_Elastic_Band related stuff (local plan, pose sequence).
+   * @brief Publish Timed_Elastic_Band related stuff (local plan, pose
+   * sequence).
    *
-   * Given a Timed_Elastic_Band instance, publish the local plan to  \e ../../local_plan
-   * and the pose sequence to  \e ../../teb_poses.
+   * Given a Timed_Elastic_Band instance, publish the local plan to  \e
+   * ../../local_plan and the pose sequence to  \e ../../teb_poses.
    * @param teb const reference to a Timed_Elastic_Band
    */
-  void publishLocalPlanAndPoses(const TimedElasticBand &teb, const BaseRobotFootprintModel &robot_model, const double fp_size, const std_msgs::ColorRGBA &color = toColorMsg(0.5, 0.0, 0.8, 0.0));
-  void publishAgentLocalPlansAndPoses(const std::map<uint64_t, TimedElasticBand> &agents_tebs_map, const BaseRobotFootprintModel &agent_model, const double fp_size, const std_msgs::ColorRGBA &color= toColorMsg(0.5, 0.0, 0.8, 0.0));
+  void publishLocalPlanAndPoses(
+      const TimedElasticBand &teb, const BaseRobotFootprintModel &robot_model,
+      const double fp_size,
+      const std_msgs::ColorRGBA &color = toColorMsg(0.5, 0.0, 0.8, 0.0));
+  void publishAgentLocalPlansAndPoses(
+      const std::map<uint64_t, TimedElasticBand> &agents_tebs_map,
+      const BaseRobotFootprintModel &agent_model, const double fp_size,
+      const std_msgs::ColorRGBA &color = toColorMsg(0.5, 0.0, 0.8, 0.0));
 
   void publishTrajectory(const PlanTrajCombined &plan_traj_combined);
-  void publishAgentTrajectories(const std::vector<AgentPlanTrajCombined> &agents_plans_combined);
+  void publishAgentTrajectories(
+      const std::vector<AgentPlanTrajCombined> &agents_plans_combined);
 
   /**
    * @brief Publish the visualization of the robot model
@@ -176,8 +186,10 @@ public:
    * @param ns Namespace for the marker objects
    * @param color Color of the footprint
    */
-  void publishRobotFootprintModel(const PoseSE2& current_pose, const BaseRobotFootprintModel& robot_model, const std::string& ns = "RobotFootprintModel",
-                                  const std_msgs::ColorRGBA& color = toColorMsg(0.5, 0.0, 0.8, 0.0));
+  void publishRobotFootprintModel(
+      const PoseSE2 &current_pose, const BaseRobotFootprintModel &robot_model,
+      const std::string &ns = "RobotFootprintModel",
+      const std_msgs::ColorRGBA &color = toColorMsg(0.5, 0.0, 0.8, 0.0));
 
   /**
    * @brief Publish the robot footprints related to infeasible poses
@@ -185,90 +197,118 @@ public:
    * @param current_pose Current pose of the robot
    * @param robot_model Subclass of BaseRobotFootprintModel
    */
-  void publishInfeasibleRobotPose(const PoseSE2& current_pose, const BaseRobotFootprintModel& robot_model);
+  void publishInfeasibleRobotPose(const PoseSE2 &current_pose,
+                                  const BaseRobotFootprintModel &robot_model);
 
   /**
    * @brief Publish obstacle positions to the ros topic \e ../../teb_markers
-   * @todo Move filling of the marker message to polygon class in order to avoid checking types.
+   * @todo Move filling of the marker message to polygon class in order to avoid
+   * checking types.
    * @param obstacles Obstacle container
    */
-  void publishObstacles(const ObstContainer& obstacles) const;
+  void publishObstacles(const ObstContainer &obstacles) const;
 
   /**
    * @brief Publish via-points to the ros topic \e ../../teb_markers
    * @param via_points via-point container
    */
-  void publishViaPoints(const std::vector< Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> >& via_points, const std::string& ns = "ViaPoints") const;
+  void publishViaPoints(
+      const std::vector<Eigen::Vector2d,
+                        Eigen::aligned_allocator<Eigen::Vector2d>> &via_points,
+      const std::string &ns = "ViaPoints") const;
 
   /**
-   * @brief Publish a boost::adjacency_list (boost's graph datatype) via markers.
-   * @remarks Make sure that vertices of the graph contain a member \c pos as \c Eigen::Vector2d type
-   *	      to query metric position values.
+   * @brief Publish a boost::adjacency_list (boost's graph datatype) via
+   *markers.
+   * @remarks Make sure that vertices of the graph contain a member \c pos as \c
+   *Eigen::Vector2d type to query metric position values.
    * @param graph Const reference to the boost::adjacency_list (graph)
-   * @param ns_prefix Namespace prefix for the marker objects (the strings "Edges" and "Vertices" will be appended)
-   * @tparam GraphType boost::graph object in which vertices has the field/member \c pos.
+   * @param ns_prefix Namespace prefix for the marker objects (the strings
+   *"Edges" and "Vertices" will be appended)
+   * @tparam GraphType boost::graph object in which vertices has the
+   *field/member \c pos.
    */
   template <typename GraphType>
-  void publishGraph(const GraphType& graph, const std::string& ns_prefix = "Graph");
+  void publishGraph(const GraphType &graph,
+                    const std::string &ns_prefix = "Graph");
 
   /**
-   * @brief Publish multiple 2D paths (each path given as a point sequence) from a container class.
+   * @brief Publish multiple 2D paths (each path given as a point sequence) from
+   * a container class.
    *
    * Provide a std::vector< std::vector< T > > in which T.x() and T.y() exist
-   * and std::vector could be individually substituded by std::list / std::deque /...
+   * and std::vector could be individually substituded by std::list / std::deque
+   * /...
    *
    * A common point-type for object T could be Eigen::Vector2d.
    *
    * T could be also a raw pointer std::vector< std::vector< T* > >.
    *
    * @code
-   * 	typedef std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > PathType; // could be a list or deque as well ...
-   *    std::vector<PathType> path_container(2); // init 2 empty paths; the container could be a list or deque as well ...
-   * 	// Fill path_container.at(0) with Eigen::Vector2d elements, we skip that here
-   * 	// Fill path_container.at(1) with Eigen::Vector2d elements, we skip that here
-   *    publishPathContainer( path_container.begin(), path_container.end() );
+   * 	typedef std::vector<Eigen::Vector2d,
+   * Eigen::aligned_allocator<Eigen::Vector2d> > PathType; // could be a list or
+   * deque as well ... std::vector<PathType> path_container(2); // init 2 empty
+   * paths; the container could be a list or deque as well ...
+   * 	// Fill path_container.at(0) with Eigen::Vector2d elements, we skip that
+   * here
+   * 	// Fill path_container.at(1) with Eigen::Vector2d elements, we skip that
+   * here publishPathContainer( path_container.begin(), path_container.end() );
    * @endcode
    *
-   * @remarks Actually the underlying path does not necessarily need to be a Eigen::Vector2d sequence.
-   *          Eigen::Vector2d can be replaced with any datatype that implement public x() and y() methods.\n
+   * @remarks Actually the underlying path does not necessarily need to be a
+   * Eigen::Vector2d sequence. Eigen::Vector2d can be replaced with any datatype
+   * that implement public x() and y() methods.\n
    * @param first Bidirectional iterator pointing to the begin of the path
    * @param last Bidirectional iterator pointing to the end of the path
-   * @param ns Namespace for the marker objects (the strings "Edges" and "Vertices" will be appended)
-   * @tparam BidirIter Bidirectional iterator to a 2D path (sequence of Eigen::Vector2d elements) in a container
+   * @param ns Namespace for the marker objects (the strings "Edges" and
+   * "Vertices" will be appended)
+   * @tparam BidirIter Bidirectional iterator to a 2D path (sequence of
+   * Eigen::Vector2d elements) in a container
    */
   template <typename BidirIter>
-  void publishPathContainer(BidirIter first, BidirIter last, const std::string& ns = "PathContainer");
+  void publishPathContainer(BidirIter first, BidirIter last,
+                            const std::string &ns = "PathContainer");
 
   /**
-   * @brief Publish multiple Tebs from a container class (publish as marker message).
+   * @brief Publish multiple Tebs from a container class (publish as marker
+   * message).
    *
    * @param teb_planner Container of boost::shared_ptr< TebOptPlannerPtr >
    * @param ns Namespace for the marker objects
    */
-  void publishTebContainer(const std::vector< boost::shared_ptr<TebOptimalPlanner> >& teb_planner, const std::string& ns = "TebContainer");
+  void publishTebContainer(
+      const std::vector<boost::shared_ptr<TebOptimalPlanner>> &teb_planner,
+      const std::string &ns = "TebContainer");
 
   /**
    * @brief Publish a feedback message (multiple trajectory version)
    *
-   * The feedback message contains the all planned trajectory candidates (e.g. if planning in distinctive topologies is turned on).
-   * Each trajectory is composed of the sequence of poses, the velocity profile and temporal information.
-   * The feedback message also contains a list of active obstacles.
-   * @param teb_planners container with multiple tebs (resp. their planner instances)
-   * @param selected_trajectory_idx Idx of the currently selected trajectory in \c teb_planners
+   * The feedback message contains the all planned trajectory candidates (e.g.
+   * if planning in distinctive topologies is turned on). Each trajectory is
+   * composed of the sequence of poses, the velocity profile and temporal
+   * information. The feedback message also contains a list of active obstacles.
+   * @param teb_planners container with multiple tebs (resp. their planner
+   * instances)
+   * @param selected_trajectory_idx Idx of the currently selected trajectory in
+   * \c teb_planners
    * @param obstacles Container of obstacles
    */
-  void publishFeedbackMessage(const std::vector< boost::shared_ptr<TebOptimalPlanner> >& teb_planners, unsigned int selected_trajectory_idx, const ObstContainer& obstacles);
+  void publishFeedbackMessage(
+      const std::vector<boost::shared_ptr<TebOptimalPlanner>> &teb_planners,
+      unsigned int selected_trajectory_idx, const ObstContainer &obstacles);
 
   /**
    * @brief Publish a feedback message (single trajectory overload)
    *
    * The feedback message contains the planned trajectory
-   * that is composed of the sequence of poses, the velocity profile and temporal information.
-   * The feedback message also contains a list of active obstacles.
+   * that is composed of the sequence of poses, the velocity profile and
+   * temporal information. The feedback message also contains a list of active
+   * obstacles.
    * @param teb_planner the planning instance
    * @param obstacles Container of obstacles
    */
-  void publishFeedbackMessage(const TebOptimalPlanner& teb_planner, const ObstContainer& obstacles);
+  void publishFeedbackMessage(const TebOptimalPlanner &teb_planner,
+                              const ObstContainer &obstacles);
 
   //@}
 
@@ -282,13 +322,17 @@ public:
    */
   static std_msgs::ColorRGBA toColorMsg(double a, double r, double g, double b);
 
-  void setMarkerColour(visualization_msgs::Marker &marker, double itr, double n);
+  void setMarkerColour(visualization_msgs::Marker &marker, double itr,
+                       double n);
   void publishMode(int Mode);
+  void publishCrossingPoses(
+      const TimedElasticBand &teb,
+      const std::map<uint64_t, TimedElasticBand> &agents_tebs_map);
 
 protected:
-
   /**
-   * @brief Small helper function that checks if initialize() has been called and prints an error message if not.
+   * @brief Small helper function that checks if initialize() has been called
+   * and prints an error message if not.
    * @return \c true if not initialized, \c false if everything is ok
    */
   bool printErrorWhenNotInitialized() const;
@@ -299,23 +343,30 @@ protected:
   ros::Publisher agents_global_plans_pub_; //!< Publisher for the local plan
   ros::Publisher agents_local_plans_pub_;  //!< Publisher for the local plan
   ros::Publisher agents_local_trajs_pub_;
-  ros::Publisher teb_poses_pub_, teb_fp_poses_pub_; //!< Publisher for the trajectory pose sequence
-  ros::Publisher agents_tebs_poses_pub_, agents_tebs_fp_poses_pub_; //!< Publisher for the trajectory pose sequence
+  ros::Publisher teb_poses_pub_,
+      teb_fp_poses_pub_; //!< Publisher for the trajectory pose sequence
+  ros::Publisher agents_tebs_poses_pub_,
+      agents_tebs_fp_poses_pub_; //!< Publisher for the trajectory pose sequence
   ros::Publisher teb_marker_pub_; //!< Publisher for visualization markers
-  ros::Publisher feedback_pub_, mode_text_pub;   //!< Publisher for the feedback message and mode for analysis and debug purposes
+  ros::Publisher feedback_pub_,
+      mode_text_pub; //!< Publisher for the feedback message and mode for
+                     //!< analysis and debug purposes
   ros::Publisher robot_traj_time_pub_, robot_path_time_pub_;
-  ros::Publisher robot_next_pose_pub_, agent_next_pose_pub_; // Pulishers for pose tracking
+  ros::Publisher robot_next_pose_pub_,
+      agent_next_pose_pub_; // Pulishers for pose tracking
   ros::Publisher agent_trajs_time_pub_, agent_paths_time_pub_;
-  ros::Publisher agent_marker_pub ,agent_arrow_pub;
+  ros::Publisher agent_marker_pub, agent_arrow_pub, crossing_point_pub_,
+      crossing_info_pub_;
   ros::Subscriber tracked_agents_sub_;
   std::vector<double> vel_robot, vel_agent;
   tf::TransformListener tf_;
-  std::string ns_; //Name space of the robot
+  std::string ns_; // Name space of the robot
 
+  const HATebConfig
+      *cfg_; //!< Config class that stores and manages all related parameters
 
-  const HATebConfig* cfg_; //!< Config class that stores and manages all related parameters
-
-  bool initialized_; //!< Keeps track about the correct initialization of this class
+  bool initialized_; //!< Keeps track about the correct initialization of this
+                     //!< class
   ros::Timer clearing_timer_;
   void clearingTimerCB(const ros::TimerEvent &event);
   bool last_publish_robot_global_plan, last_publish_robot_local_plan,
@@ -325,7 +376,6 @@ protected:
       last_publish_agents_local_plan_fp_poses;
 
   mutable int last_robot_fp_poses_idx_, last_agent_fp_poses_idx_;
-
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -337,9 +387,7 @@ typedef boost::shared_ptr<TebVisualization> TebVisualizationPtr;
 //! Abbrev. for shared instances of the TebVisualization (read-only)
 typedef boost::shared_ptr<const TebVisualization> TebVisualizationConstPtr;
 
-
 } // namespace hateb_local_planner
-
 
 // Include template method implementations / definitions
 #include <hateb_local_planner/visualization.hpp>

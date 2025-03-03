@@ -58,26 +58,22 @@
 #define AGENT_TRAJS_TIME_TOPIC "agents_trajs_time"
 #define AGENT_PATHS_TIME_TOPIC "agents_plans_time"
 #define DEFAUTL_SEGMENT_TYPE cohan_msgs::TrackedSegmentType::TORSO
+#include <cohan_msgs/TrackedAgents.h>
+#include <cohan_msgs/TrackedSegmentType.h>
 #include <hateb_local_planner/FeedbackMsg.h>
 #include <hateb_local_planner/optimal_planner.h>
 #include <hateb_local_planner/visualization.h>
-#include <cohan_msgs/TrackedAgents.h>
-#include <cohan_msgs/TrackedSegmentType.h>
 
-namespace hateb_local_planner
-{
+namespace hateb_local_planner {
 
-TebVisualization::TebVisualization() : initialized_(false)
-{
-}
+TebVisualization::TebVisualization() : initialized_(false) {}
 
-TebVisualization::TebVisualization(ros::NodeHandle& nh, const HATebConfig& cfg) : initialized_(false)
-{
+TebVisualization::TebVisualization(ros::NodeHandle &nh, const HATebConfig &cfg)
+    : initialized_(false) {
   initialize(nh, cfg);
 }
 
-void TebVisualization::initialize(ros::NodeHandle& nh, const HATebConfig& cfg)
-{
+void TebVisualization::initialize(ros::NodeHandle &nh, const HATebConfig &cfg) {
   if (initialized_)
     ROS_WARN("TebVisualization already initialized. Reinitalizing...");
 
@@ -96,8 +92,8 @@ void TebVisualization::initialize(ros::NodeHandle& nh, const HATebConfig& cfg)
       nh.advertise<cohan_msgs::AgentPathArray>(AGENT_GLOBAL_PLANS_TOPIC, 1);
   agents_local_plans_pub_ =
       nh.advertise<cohan_msgs::AgentPathArray>(AGENT_LOCAL_PLANS_TOPIC, 1);
-  agents_local_trajs_pub_ =
-      nh.advertise<cohan_msgs::AgentTrajectoryArray>(AGENT_LOCAL_TRAJS_TOPIC, 1);
+  agents_local_trajs_pub_ = nh.advertise<cohan_msgs::AgentTrajectoryArray>(
+      AGENT_LOCAL_TRAJS_TOPIC, 1);
   agents_tebs_poses_pub_ =
       nh.advertise<geometry_msgs::PoseArray>(AGENT_LOCAL_PLANS_POSES_TOPIC, 1);
   agents_tebs_fp_poses_pub_ = nh.advertise<visualization_msgs::MarkerArray>(
@@ -114,11 +110,20 @@ void TebVisualization::initialize(ros::NodeHandle& nh, const HATebConfig& cfg)
       nh.advertise<cohan_msgs::AgentTimeToGoalArray>(AGENT_TRAJS_TIME_TOPIC, 1);
   agent_paths_time_pub_ =
       nh.advertise<cohan_msgs::AgentTimeToGoalArray>(AGENT_PATHS_TIME_TOPIC, 1);
-  agent_marker_pub = nh.advertise<visualization_msgs::MarkerArray>("agent_marker", 1);
-  agent_arrow_pub = nh.advertise<visualization_msgs::MarkerArray>("agent_arrow", 1);
+  agent_marker_pub =
+      nh.advertise<visualization_msgs::MarkerArray>("agent_marker", 1);
+  agent_arrow_pub =
+      nh.advertise<visualization_msgs::MarkerArray>("agent_arrow", 1);
   mode_text_pub = nh.advertise<visualization_msgs::Marker>("mode_text", 1);
-  robot_next_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>("robot_next_pose", 1);
-  agent_next_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>("agent_next_pose", 1);
+  robot_next_pose_pub_ =
+      nh.advertise<geometry_msgs::PoseStamped>("robot_next_pose", 1);
+  agent_next_pose_pub_ =
+      nh.advertise<geometry_msgs::PoseStamped>("agent_next_pose", 1);
+  crossing_point_pub_ =
+      nh.advertise<geometry_msgs::PoseArray>("crossing_points", 10);
+
+  crossing_info_pub_ =
+      nh.advertise<cohan_msgs::CrossingInfo>("crossing_info", 10);
 
   last_publish_robot_global_plan =
       cfg_->visualization.publish_robot_global_plan;
@@ -136,30 +141,32 @@ void TebVisualization::initialize(ros::NodeHandle& nh, const HATebConfig& cfg)
   last_publish_agents_local_plan_fp_poses =
       cfg_->visualization.publish_agents_local_plan_fp_poses;
 
-  tracked_agents_sub_ = nh.subscribe("/tracked_agents",10, &TebVisualization::publishTrackedAgents, this);
+  tracked_agents_sub_ = nh.subscribe(
+      "/tracked_agents", 10, &TebVisualization::publishTrackedAgents, this);
 
   clearing_timer_ = nh.createTimer(ros::Duration(CLEARING_TIMER_DURATION),
                                    &TebVisualization::clearingTimerCB, this);
 
-   if(!ros::param::get("~ns",ns_)){
-     ns_ = std::string("");
-   }
+  if (!ros::param::get("~ns", ns_)) {
+    ns_ = std::string("");
+  }
 
   last_robot_fp_poses_idx_ = 0;
   last_agent_fp_poses_idx_ = 0;
   initialized_ = true;
 }
 
-void TebVisualization::publishGlobalPlan(const std::vector<geometry_msgs::PoseStamped>& global_plan) const
-{
-  if ( printErrorWhenNotInitialized() ||
-      !cfg_->visualization.publish_robot_global_plan) return;
+void TebVisualization::publishGlobalPlan(
+    const std::vector<geometry_msgs::PoseStamped> &global_plan) const {
+  if (printErrorWhenNotInitialized() ||
+      !cfg_->visualization.publish_robot_global_plan)
+    return;
   base_local_planner::publishPlan(global_plan, global_plan_pub_);
 }
 
-void TebVisualization::publishLocalPlan(const std::vector<geometry_msgs::PoseStamped>& local_plan) const
-{
-  if ( printErrorWhenNotInitialized() )
+void TebVisualization::publishLocalPlan(
+    const std::vector<geometry_msgs::PoseStamped> &local_plan) const {
+  if (printErrorWhenNotInitialized())
     return;
   base_local_planner::publishPlan(local_plan, local_plan_pub_);
 }
@@ -167,7 +174,8 @@ void TebVisualization::publishLocalPlan(const std::vector<geometry_msgs::PoseSta
 void TebVisualization::publishAgentGlobalPlans(
     const std::vector<AgentPlanCombined> &agents_plans) const {
   if (printErrorWhenNotInitialized() ||
-      !cfg_->visualization.publish_agents_global_plans || agents_plans.empty()) {
+      !cfg_->visualization.publish_agents_global_plans ||
+      agents_plans.empty()) {
     return;
   }
 
@@ -216,9 +224,13 @@ void TebVisualization::publishAgentGlobalPlans(
     agents_global_plans_pub_.publish(agent_path_array);
   }
 }
-void TebVisualization::publishLocalPlanAndPoses(const TimedElasticBand& teb, const BaseRobotFootprintModel &robot_model, const double fp_size, const std_msgs::ColorRGBA &color)
-{
-  if (printErrorWhenNotInitialized() || (!cfg_->visualization.publish_robot_local_plan && !cfg_->visualization.publish_robot_local_plan_poses && !cfg_->visualization.publish_robot_local_plan_fp_poses))
+void TebVisualization::publishLocalPlanAndPoses(
+    const TimedElasticBand &teb, const BaseRobotFootprintModel &robot_model,
+    const double fp_size, const std_msgs::ColorRGBA &color) {
+  if (printErrorWhenNotInitialized() ||
+      (!cfg_->visualization.publish_robot_local_plan &&
+       !cfg_->visualization.publish_robot_local_plan_poses &&
+       !cfg_->visualization.publish_robot_local_plan_fp_poses))
     return;
 
   auto frame_id = cfg_->map_frame;
@@ -237,19 +249,20 @@ void TebVisualization::publishLocalPlanAndPoses(const TimedElasticBand& teb, con
   // fill path msgs with teb configurations
   double pose_time = 0.0;
   // std::vector<double> pose_times;
-  for (int i=0; i < teb.sizePoses(); i++) {
+  for (int i = 0; i < teb.sizePoses(); i++) {
     geometry_msgs::PoseStamped pose;
     pose.header.frame_id = frame_id;
     pose.header.stamp = now;
     pose.pose.position.x = teb.Pose(i).x();
     pose.pose.position.y = teb.Pose(i).y();
     // pose_times.push_back(teb.TimeDiff(i));
-    pose.pose.position.z = 0;//cfg_->hcp.visualize_with_time_as_z_axis_scale*teb.getSumOfTimeDiffsUpToIdx(i);
+    pose.pose.position.z =
+        0; // cfg_->hcp.visualize_with_time_as_z_axis_scale*teb.getSumOfTimeDiffsUpToIdx(i);
     pose.pose.orientation = tf::createQuaternionMsgFromYaw(teb.Pose(i).theta());
     teb_path.poses.push_back(pose);
     teb_poses.poses.push_back(pose.pose);
 
-    if(i==0){
+    if (i == 0) {
       robot_next_pose_pub_.publish(pose);
     }
 
@@ -281,8 +294,8 @@ void TebVisualization::publishLocalPlanAndPoses(const TimedElasticBand& teb, con
           marker.header.stamp = ros::Time::now();
           marker.action = visualization_msgs::Marker::ADD;
           marker.ns = ROBOT_FP_POSES_NS;
-          marker.pose.position.z = vel_robot[idx]/2;
-          marker.scale.z = std::max(vel_robot[idx],0.00001);
+          marker.pose.position.z = vel_robot[idx] / 2;
+          marker.scale.z = std::max(vel_robot[idx], 0.00001);
           marker.id = idx++;
           marker.color.a = 0.5;
           setMarkerColour(marker, (double)idx, fp_size);
@@ -348,7 +361,8 @@ void TebVisualization::publishTrajectory(
     trajectory_point.transform.translation.z = traj_point.pose.position.z;
     trajectory_point.transform.rotation = traj_point.pose.orientation;
     trajectory_point.velocity = traj_point.velocity;
-    auto r_vel = std::hypot(traj_point.velocity.linear.x, traj_point.velocity.linear.y);
+    auto r_vel =
+        std::hypot(traj_point.velocity.linear.x, traj_point.velocity.linear.y);
 
     vel_robot.push_back(r_vel);
     trajectory_point.time_from_start = traj_point.time_from_start;
@@ -363,7 +377,7 @@ void TebVisualization::publishTrajectory(
   }
 
   double remaining_path_dist = 0.0;
-  const geometry_msgs::PoseStamped* previous_pose = nullptr;
+  const geometry_msgs::PoseStamped *previous_pose = nullptr;
   for (auto &pose : plan_traj_combined.plan_after) {
     cohan_msgs::TrajectoryPoint trajectory_point;
     trajectory_point.transform.translation.x = pose.pose.position.x;
@@ -375,8 +389,8 @@ void TebVisualization::publishTrajectory(
 
     if (previous_pose != nullptr) {
       remaining_path_dist +=
-              std::hypot(pose.pose.position.x - previous_pose->pose.position.x,
-                         pose.pose.position.y - previous_pose->pose.position.y);
+          std::hypot(pose.pose.position.x - previous_pose->pose.position.x,
+                     pose.pose.position.y - previous_pose->pose.position.y);
     }
     previous_pose = &pose;
   }
@@ -385,7 +399,7 @@ void TebVisualization::publishTrajectory(
       robot_time_to_goal.time_to_goal +
       ros::Duration(remaining_path_dist / cfg_->robot.max_vel_x);
 
-  if(!trajectory.points.empty()) {
+  if (!trajectory.points.empty()) {
     local_traj_pub_.publish(trajectory);
     robot_traj_time_pub_.publish(robot_time_to_goal);
     robot_path_time_pub_.publish(robot_time_to_goal_full);
@@ -394,7 +408,8 @@ void TebVisualization::publishTrajectory(
 
 void TebVisualization::publishAgentLocalPlansAndPoses(
     const std::map<uint64_t, TimedElasticBand> &agents_tebs_map,
-    const BaseRobotFootprintModel &agent_model, const double fp_size, const std_msgs::ColorRGBA &color) {
+    const BaseRobotFootprintModel &agent_model, const double fp_size,
+    const std_msgs::ColorRGBA &color) {
   if (printErrorWhenNotInitialized() || agents_tebs_map.empty() ||
       (!cfg_->visualization.publish_agents_local_plans &&
        !cfg_->visualization.publish_agents_local_plan_poses &&
@@ -441,25 +456,25 @@ void TebVisualization::publishAgentLocalPlansAndPoses(
       if (i < (agent_teb.sizePoses() - 1)) {
         pose_time += agent_teb.TimeDiff(i);
       }
-      if(i==0){
+      if (i == 0) {
         agent_next_pose_pub_.publish(pose);
       }
     }
     agent_path_array.paths.push_back(path);
   }
 
-  // if (!teb_path.poses.empty() && cfg_->visualization.publish_robot_local_plan) {
+  // if (!teb_path.poses.empty() &&
+  // cfg_->visualization.publish_robot_local_plan) {
   //   local_plan_pub_.publish(teb_path);
   // }
 
   if (!agents_teb_poses.poses.empty()) {
     if (cfg_->visualization.publish_agents_local_plan_poses) {
       agents_tebs_poses_pub_.publish(agents_teb_poses);
-
     }
 
-    if(cfg_->visualization.publish_agents_local_plans){
-    agents_local_plans_pub_.publish(agent_path_array);
+    if (cfg_->visualization.publish_agents_local_plans) {
+      agents_local_plans_pub_.publish(agent_path_array);
     }
 
     if (cfg_->visualization.publish_agents_local_plan_fp_poses) {
@@ -475,8 +490,8 @@ void TebVisualization::publishAgentLocalPlansAndPoses(
           agent_marker.header.stamp = ros::Time::now();
           agent_marker.action = visualization_msgs::Marker::ADD;
           agent_marker.ns = AGENT_FP_POSES_NS;
-          agent_marker.pose.position.z = vel_agent[idx]/2;
-          agent_marker.scale.z = std::max(vel_agent[idx],0.00001);
+          agent_marker.pose.position.z = vel_agent[idx] / 2;
+          agent_marker.scale.z = std::max(vel_agent[idx], 0.00001);
           agent_marker.id = idx++;
           agent_marker.color.a = 0.5;
           setMarkerColour(agent_marker, (double)idx, fp_size);
@@ -502,9 +517,62 @@ void TebVisualization::publishAgentLocalPlansAndPoses(
   }
 }
 
+void TebVisualization::publishCrossingPoses(
+    const TimedElasticBand &teb,
+    const std::map<uint64_t, TimedElasticBand> &agents_tebs_map) {
+
+  // std::map<int, float> min_agent_dist;
+  geometry_msgs::PoseArray pose_array;
+  pose_array.header.stamp = ros::Time::now();
+  pose_array.header.frame_id = "map";
+  cohan_msgs::CrossingInfo crossing_info;
+
+  for (auto &agent_teb_kv : agents_tebs_map) {
+    auto &agent_id = agent_teb_kv.first;
+    auto &agent_teb = agent_teb_kv.second;
+    crossing_info.agent_ids.push_back(agent_id);
+
+    if (agent_teb.sizePoses() == 0) {
+      continue;
+    }
+    std::vector<float> dists;
+    auto n = std::min(teb.sizePoses(), agent_teb.sizePoses());
+    float time = 0.0;
+    std::vector<float> times;
+    for (unsigned int i = 0; i < n; i++) {
+      Eigen::Vector2d human_pose;
+      human_pose.coeffRef(0) = agent_teb.Pose(i).x();
+      human_pose.coeffRef(1) = agent_teb.Pose(i).y();
+
+      Eigen::Vector2d robot_pose;
+      robot_pose.coeffRef(0) = teb.Pose(i).x();
+      robot_pose.coeffRef(1) = teb.Pose(i).y();
+      if (i < (teb.sizePoses() - 1)) {
+        time += teb.TimeDiff(i);
+        times.push_back(time);
+      }
+      dists.push_back((human_pose - robot_pose).norm());
+    }
+    auto min_it = std::min_element(dists.begin(), dists.end());
+    int min_index = std::distance(dists.begin(), min_it);
+    // min_agent_dist[agent_id] = *min_it;
+
+    crossing_info.times.push_back(times[min_index]);
+    crossing_info.distances.push_back(*min_it);
+
+    geometry_msgs::Pose pose;
+    pose.position.x = teb.Pose(min_index).x();
+    pose.position.y = teb.Pose(min_index).y();
+    pose.orientation =
+        tf::createQuaternionMsgFromYaw(teb.Pose(min_index).theta());
+    pose_array.poses.push_back(pose);
+  }
+  crossing_point_pub_.publish(pose_array);
+  crossing_info_pub_.publish(crossing_info);
+}
+
 void TebVisualization::publishAgentTrajectories(
-    const std::vector<AgentPlanTrajCombined> &agents_plans_traj_combined)
-    {
+    const std::vector<AgentPlanTrajCombined> &agents_plans_traj_combined) {
   if (printErrorWhenNotInitialized() ||
       !cfg_->visualization.publish_agents_local_plans) {
     return;
@@ -545,9 +613,11 @@ void TebVisualization::publishAgentTrajectories(
           agent_pose.pose.position.y;
       agent_path_trajectory_point.transform.translation.z =
           agent_pose.pose.position.z;
-      agent_path_trajectory_point.transform.rotation = agent_pose.pose.orientation;
+      agent_path_trajectory_point.transform.rotation =
+          agent_pose.pose.orientation;
       agent_path_trajectory_point.time_from_start.fromSec(-1.0);
-      agent_path_trajectory.trajectory.points.push_back(agent_path_trajectory_point);
+      agent_path_trajectory.trajectory.points.push_back(
+          agent_path_trajectory_point);
     }
 
     for (auto &agent_traj_point :
@@ -562,11 +632,14 @@ void TebVisualization::publishAgentTrajectories(
       agent_path_trajectory_point.transform.rotation =
           agent_traj_point.pose.orientation;
       agent_path_trajectory_point.velocity = agent_traj_point.velocity;
-      auto h_vel = std::hypot(agent_traj_point.velocity.linear.x, agent_traj_point.velocity.linear.y);
+      auto h_vel = std::hypot(agent_traj_point.velocity.linear.x,
+                              agent_traj_point.velocity.linear.y);
       vel_agent.push_back(h_vel);
 
-      agent_path_trajectory_point.time_from_start = agent_traj_point.time_from_start;
-      agent_path_trajectory.trajectory.points.push_back(agent_path_trajectory_point);
+      agent_path_trajectory_point.time_from_start =
+          agent_traj_point.time_from_start;
+      agent_path_trajectory.trajectory.points.push_back(
+          agent_path_trajectory_point);
     }
 
     if (agent_plan_traj_combined.optimized_trajectory.size() > 0) {
@@ -577,7 +650,7 @@ void TebVisualization::publishAgentTrajectories(
     }
 
     double remaining_path_dist = 0.0;
-    const geometry_msgs::PoseStamped* previous_agent_pose = nullptr;
+    const geometry_msgs::PoseStamped *previous_agent_pose = nullptr;
     for (auto agent_pose : agent_plan_traj_combined.plan_after) {
       cohan_msgs::TrajectoryPoint agent_path_trajectory_point;
       agent_path_trajectory_point.transform.translation.x =
@@ -586,15 +659,17 @@ void TebVisualization::publishAgentTrajectories(
           agent_pose.pose.position.y;
       agent_path_trajectory_point.transform.translation.z =
           agent_pose.pose.position.z;
-      agent_path_trajectory_point.transform.rotation = agent_pose.pose.orientation;
+      agent_path_trajectory_point.transform.rotation =
+          agent_pose.pose.orientation;
       agent_path_trajectory_point.time_from_start.fromSec(-1.0);
-      agent_path_trajectory.trajectory.points.push_back(agent_path_trajectory_point);
+      agent_path_trajectory.trajectory.points.push_back(
+          agent_path_trajectory_point);
       if (previous_agent_pose != nullptr) {
-          remaining_path_dist +=
-                  std::hypot(agent_pose.pose.position.x - previous_agent_pose->pose.position.x,
-                             agent_pose.pose.position.y - previous_agent_pose->pose.position.y);
-        }
-        previous_agent_pose = &agent_pose;
+        remaining_path_dist += std::hypot(
+            agent_pose.pose.position.x - previous_agent_pose->pose.position.x,
+            agent_pose.pose.position.y - previous_agent_pose->pose.position.y);
+      }
+      previous_agent_pose = &agent_pose;
     }
 
     if (!agent_path_trajectory.trajectory.points.empty()) {
@@ -617,37 +692,35 @@ void TebVisualization::publishAgentTrajectories(
   }
 }
 
-void TebVisualization::publishMode(int Mode){
+void TebVisualization::publishMode(int Mode) {
 
-    tf::StampedTransform robot_to_map_tf;
-    tf::Transform start_pose_tr;
-    bool transform_found = false;
-    try {
-      std::string base = "base_footprint";
-      if(ns_!=""){
-      }
-      base = ns_+"/"+base;
-
-      tf_.lookupTransform("map", base, ros::Time(0),
-                          robot_to_map_tf);
-      transform_found = true;
-    } catch (tf::LookupException &ex) {
-      ROS_ERROR_NAMED("visualization", "No Transform available Error: %s\n",
-                      ex.what());
-    } catch (tf::ConnectivityException &ex) {
-      ROS_ERROR_NAMED("visualization", "Connectivity Error: %s\n", ex.what());
-    } catch (tf::ExtrapolationException &ex) {
-      ROS_ERROR_NAMED("visualization", "Extrapolation Error: %s\n", ex.what());
+  tf::StampedTransform robot_to_map_tf;
+  tf::Transform start_pose_tr;
+  bool transform_found = false;
+  try {
+    std::string base = "base_footprint";
+    if (ns_ != "") {
     }
+    base = ns_ + "/" + base;
 
-    geometry_msgs::Transform robot_behind_pose;
-    if(transform_found){
-      start_pose_tr.setOrigin(tf::Vector3(-1.0, 0.0, 0.0));
-      start_pose_tr.setRotation(tf::createQuaternionFromYaw(0.0));
-      start_pose_tr = robot_to_map_tf * start_pose_tr;
-      tf::transformTFToMsg(start_pose_tr, robot_behind_pose);
-    }
+    tf_.lookupTransform("map", base, ros::Time(0), robot_to_map_tf);
+    transform_found = true;
+  } catch (tf::LookupException &ex) {
+    ROS_ERROR_NAMED("visualization", "No Transform available Error: %s\n",
+                    ex.what());
+  } catch (tf::ConnectivityException &ex) {
+    ROS_ERROR_NAMED("visualization", "Connectivity Error: %s\n", ex.what());
+  } catch (tf::ExtrapolationException &ex) {
+    ROS_ERROR_NAMED("visualization", "Extrapolation Error: %s\n", ex.what());
+  }
 
+  geometry_msgs::Transform robot_behind_pose;
+  if (transform_found) {
+    start_pose_tr.setOrigin(tf::Vector3(-1.0, 0.0, 0.0));
+    start_pose_tr.setRotation(tf::createQuaternionFromYaw(0.0));
+    start_pose_tr = robot_to_map_tf * start_pose_tr;
+    tf::transformTFToMsg(start_pose_tr, robot_behind_pose);
+  }
 
   visualization_msgs::Marker mode_text;
   mode_text.header.frame_id = "map";
@@ -665,15 +738,15 @@ void TebVisualization::publishMode(int Mode){
   // mode_text.pose.orientation.z = 0.0;
   // mode_text.pose.orientation.w = 1.0;
 
-  if(Mode==-1)
+  if (Mode == -1)
     mode_text.text = "SingleBand";
-  else if(Mode == 0)
+  else if (Mode == 0)
     mode_text.text = "DualBand";
-  else if(Mode == 1)
+  else if (Mode == 1)
     mode_text.text = "VelObs";
-  else if(Mode == 2)
+  else if (Mode == 2)
     mode_text.text = "Backoff";
-  else if(Mode == 3)
+  else if (Mode == 3)
     mode_text.text = "PassingThrough";
   else if (Mode == 4)
     mode_text.text = "ApproachingPillar";
@@ -694,150 +767,149 @@ void TebVisualization::publishMode(int Mode){
 
   mode_text.lifetime = ros::Duration(2.0);
   mode_text_pub.publish(mode_text);
-
 }
 
-void TebVisualization::publishTrackedAgents(const cohan_msgs::TrackedAgentsConstPtr &agents){
-  visualization_msgs::MarkerArray marker_arr,arrow_arr;
+void TebVisualization::publishTrackedAgents(
+    const cohan_msgs::TrackedAgentsConstPtr &agents) {
+  visualization_msgs::MarkerArray marker_arr, arrow_arr;
 
-    int i=0;
-    for(auto &agent : agents->agents)
-    {  visualization_msgs::Marker marker,arrow;
-        // Set the frame ID and timestamp.  See the TF tutorials for information on these.
-        marker.header.frame_id = "map";
-        marker.header.stamp = ros::Time::now();
-        arrow.header.frame_id = "map";
-        arrow.header.stamp = ros::Time::now();
+  int i = 0;
+  for (auto &agent : agents->agents) {
+    visualization_msgs::Marker marker, arrow;
+    // Set the frame ID and timestamp.  See the TF tutorials for information
+    // on these.
+    marker.header.frame_id = "map";
+    marker.header.stamp = ros::Time::now();
+    arrow.header.frame_id = "map";
+    arrow.header.stamp = ros::Time::now();
 
-      for(auto segment : agent.segments)
-      {          // Set the namespace and id for this marker.  This serves to create a unique ID
-          // Any marker sent with the same namespace and id will overwrite the old one
-          marker.ns = "body";
-          marker.id = i;
-          arrow.ns = "direction";
-          arrow.id = i;
+    for (auto segment :
+         agent.segments) { // Set the namespace and id for this marker.  This
+                           // serves to create a unique ID
+      // Any marker sent with the same namespace and id will overwrite the old
+      // one
+      marker.ns = "body";
+      marker.id = i;
+      arrow.ns = "direction";
+      arrow.id = i;
 
-          // Set the marker type.  Initially this is CUBE, and cycles between that and SPHERE, ARROW, and CYLINDER
-          marker.type = visualization_msgs::Marker::CYLINDER;
-          arrow.type = visualization_msgs::Marker::ARROW;
+      // Set the marker type.  Initially this is CUBE, and cycles between that
+      // and SPHERE, ARROW, and CYLINDER
+      marker.type = visualization_msgs::Marker::CYLINDER;
+      arrow.type = visualization_msgs::Marker::ARROW;
 
-          // Set the marker action.  Options are ADD, DELETE, and new in ROS Indigo: 3 (DELETEALL)
-          marker.action = visualization_msgs::Marker::ADD;
-          arrow.action = visualization_msgs::Marker::ADD;
+      // Set the marker action.  Options are ADD, DELETE, and new in ROS
+      // Indigo: 3 (DELETEALL)
+      marker.action = visualization_msgs::Marker::ADD;
+      arrow.action = visualization_msgs::Marker::ADD;
 
-          // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
-          marker.pose.position.x = segment.pose.pose.position.x;
-          marker.pose.position.y = segment.pose.pose.position.y;
-          marker.pose.position.z = 0.9;
-          marker.pose.orientation = segment.pose.pose.orientation;
+      // Set the pose of the marker.  This is a full 6DOF pose relative to the
+      // frame/time specified in the header
+      marker.pose.position.x = segment.pose.pose.position.x;
+      marker.pose.position.y = segment.pose.pose.position.y;
+      marker.pose.position.z = 0.9;
+      marker.pose.orientation = segment.pose.pose.orientation;
 
-          arrow.pose.position.x = segment.pose.pose.position.x;
-          arrow.pose.position.y = segment.pose.pose.position.y;
-          arrow.pose.position.z = 0.0;
-          arrow.pose.orientation = segment.pose.pose.orientation;
+      arrow.pose.position.x = segment.pose.pose.position.x;
+      arrow.pose.position.y = segment.pose.pose.position.y;
+      arrow.pose.position.z = 0.0;
+      arrow.pose.orientation = segment.pose.pose.orientation;
 
-          // Set the scale of the marker -- 1x1x1 here means 1m on a side
-          marker.scale.x = 0.6;
-          marker.scale.y = 0.6;
-          marker.scale.z = 1.8;
+      // Set the scale of the marker -- 1x1x1 here means 1m on a side
+      marker.scale.x = 0.6;
+      marker.scale.y = 0.6;
+      marker.scale.z = 1.8;
 
-          arrow.scale.x = 0.8;
-          arrow.scale.y = 0.05;
-          arrow.scale.z = 0.05;
+      arrow.scale.x = 0.8;
+      arrow.scale.y = 0.05;
+      arrow.scale.z = 0.05;
 
-          // Set the color -- be sure to set alpha to something non-zero!
-          marker.color.r = 0.0f;
-          marker.color.g = 1.0f;
-          marker.color.b = 0.0f;
-          marker.color.a = 1.0;
+      // Set the color -- be sure to set alpha to something non-zero!
+      marker.color.r = 0.0f;
+      marker.color.g = 1.0f;
+      marker.color.b = 0.0f;
+      marker.color.a = 1.0;
 
-          arrow.color.r = 1.0f;
-          arrow.color.g = 1.0f;
-          arrow.color.b = 0.0f;
-          arrow.color.a = 1.0;
+      arrow.color.r = 1.0f;
+      arrow.color.g = 1.0f;
+      arrow.color.b = 0.0f;
+      arrow.color.a = 1.0;
 
-          marker.lifetime = ros::Duration(2.0);
-          arrow.lifetime = ros::Duration(2.0);
-          marker_arr.markers.push_back(marker);
-          arrow_arr.markers.push_back(arrow);
-          i++;
-        }
+      marker.lifetime = ros::Duration(2.0);
+      arrow.lifetime = ros::Duration(2.0);
+      marker_arr.markers.push_back(marker);
+      arrow_arr.markers.push_back(arrow);
+      i++;
     }
-    agent_marker_pub.publish(marker_arr);
-    agent_arrow_pub.publish(arrow_arr);
   }
-
-  void TebVisualization::setMarkerColour(visualization_msgs::Marker &marker, double itr, double n){
-    double N = n/11;
-
-      if(itr>=N && itr < 3*N){
-
-        marker.color.r = (3*N-itr)/(2*N);
-        marker.color.g = 1.0;
-        marker.color.b = 0;
-      }
-      else if(itr>=3*N && itr < 5*N){
-
-        marker.color.r = 0;
-        marker.color.g = 1.0;
-        marker.color.b = (itr-3*N)/(2*N);
-      }
-      else if(itr>=5*N && itr < 7*N){
-
-        marker.color.r = 0;
-        marker.color.g = (7*N-itr)/(2*N);
-        marker.color.b = 1.0;
-      }
-      else if(itr>=7*N && itr < 9*N){
-
-        marker.color.r = (itr-7*N)/(2*N);
-        marker.color.g = 0;
-        marker.color.b = 1.0;
-      }
-      else if(itr>=9*N && itr <= n){
-        marker.color.r = 1.0;
-        marker.color.g = 0;
-        marker.color.b = (11*N-itr)/(2*N);
-      }
-
-  }
-
-    void TebVisualization::publishRobotFootprintModel(const PoseSE2& current_pose, const BaseRobotFootprintModel& robot_model, const std::string& ns,
-                                                      const std_msgs::ColorRGBA &color)
-    {
-      if ( printErrorWhenNotInitialized() )
-        return;
-
-      std::vector<visualization_msgs::Marker> markers;
-      robot_model.visualizeRobot(current_pose, markers, color);
-      if (markers.empty())
-        return;
-
-      int idx = 1000000;  // avoid overshadowing by obstacles
-      for (std::vector<visualization_msgs::Marker>::iterator marker_it = markers.begin(); marker_it != markers.end(); ++marker_it, ++idx)
-      {
-        marker_it->header.frame_id = cfg_->map_frame;
-        marker_it->header.stamp = ros::Time::now();
-        marker_it->action = visualization_msgs::Marker::ADD;
-        marker_it->ns = ns;
-        marker_it->id = idx;
-        marker_it->lifetime = ros::Duration(2.0);
-        teb_marker_pub_.publish(*marker_it);
-
-      }
-    }
-
-
-
-void TebVisualization::publishInfeasibleRobotPose(const PoseSE2& current_pose, const BaseRobotFootprintModel& robot_model)
-{
-  publishRobotFootprintModel(current_pose, robot_model, "InfeasibleRobotPoses", toColorMsg(0.5, 0.8, 0.0, 0.0));
+  agent_marker_pub.publish(marker_arr);
+  agent_arrow_pub.publish(arrow_arr);
 }
 
+void TebVisualization::setMarkerColour(visualization_msgs::Marker &marker,
+                                       double itr, double n) {
+  double N = n / 11;
 
-void TebVisualization::publishObstacles(const ObstContainer& obstacles) const
-{
-  if ( obstacles.empty() || printErrorWhenNotInitialized() )
+  if (itr >= N && itr < 3 * N) {
+
+    marker.color.r = (3 * N - itr) / (2 * N);
+    marker.color.g = 1.0;
+    marker.color.b = 0;
+  } else if (itr >= 3 * N && itr < 5 * N) {
+
+    marker.color.r = 0;
+    marker.color.g = 1.0;
+    marker.color.b = (itr - 3 * N) / (2 * N);
+  } else if (itr >= 5 * N && itr < 7 * N) {
+
+    marker.color.r = 0;
+    marker.color.g = (7 * N - itr) / (2 * N);
+    marker.color.b = 1.0;
+  } else if (itr >= 7 * N && itr < 9 * N) {
+
+    marker.color.r = (itr - 7 * N) / (2 * N);
+    marker.color.g = 0;
+    marker.color.b = 1.0;
+  } else if (itr >= 9 * N && itr <= n) {
+    marker.color.r = 1.0;
+    marker.color.g = 0;
+    marker.color.b = (11 * N - itr) / (2 * N);
+  }
+}
+
+void TebVisualization::publishRobotFootprintModel(
+    const PoseSE2 &current_pose, const BaseRobotFootprintModel &robot_model,
+    const std::string &ns, const std_msgs::ColorRGBA &color) {
+  if (printErrorWhenNotInitialized())
+    return;
+
+  std::vector<visualization_msgs::Marker> markers;
+  robot_model.visualizeRobot(current_pose, markers, color);
+  if (markers.empty())
+    return;
+
+  int idx = 1000000; // avoid overshadowing by obstacles
+  for (std::vector<visualization_msgs::Marker>::iterator marker_it =
+           markers.begin();
+       marker_it != markers.end(); ++marker_it, ++idx) {
+    marker_it->header.frame_id = cfg_->map_frame;
+    marker_it->header.stamp = ros::Time::now();
+    marker_it->action = visualization_msgs::Marker::ADD;
+    marker_it->ns = ns;
+    marker_it->id = idx;
+    marker_it->lifetime = ros::Duration(2.0);
+    teb_marker_pub_.publish(*marker_it);
+  }
+}
+
+void TebVisualization::publishInfeasibleRobotPose(
+    const PoseSE2 &current_pose, const BaseRobotFootprintModel &robot_model) {
+  publishRobotFootprintModel(current_pose, robot_model, "InfeasibleRobotPoses",
+                             toColorMsg(0.5, 0.8, 0.0, 0.0));
+}
+
+void TebVisualization::publishObstacles(const ObstContainer &obstacles) const {
+  if (obstacles.empty() || printErrorWhenNotInitialized())
     return;
 
   // Visualize point obstacles
@@ -851,21 +923,20 @@ void TebVisualization::publishObstacles(const ObstContainer& obstacles) const
     marker.action = visualization_msgs::Marker::ADD;
     marker.lifetime = ros::Duration(2.0);
 
-    for (ObstContainer::const_iterator obst = obstacles.begin(); obst != obstacles.end(); ++obst)
-    {
-      boost::shared_ptr<PointObstacle> pobst = boost::dynamic_pointer_cast<PointObstacle>(*obst);
+    for (ObstContainer::const_iterator obst = obstacles.begin();
+         obst != obstacles.end(); ++obst) {
+      boost::shared_ptr<PointObstacle> pobst =
+          boost::dynamic_pointer_cast<PointObstacle>(*obst);
       if (!pobst)
         continue;
 
-      if (cfg_->hcp.visualize_with_time_as_z_axis_scale < 0.001)
-      {
+      if (cfg_->hcp.visualize_with_time_as_z_axis_scale < 0.001) {
         geometry_msgs::Point point;
         point.x = pobst->x();
         point.y = pobst->y();
         point.z = 0;
         marker.points.push_back(point);
-      }
-      else // Spatiotemporally point obstacles become a line
+      } else // Spatiotemporally point obstacles become a line
       {
         marker.type = visualization_msgs::Marker::LINE_LIST;
         geometry_msgs::Point start;
@@ -880,7 +951,7 @@ void TebVisualization::publishObstacles(const ObstContainer& obstacles) const
         pobst->predictCentroidConstantVelocity(t, pred);
         end.x = pred[0];
         end.y = pred[1];
-        end.z = cfg_->hcp.visualize_with_time_as_z_axis_scale*t;
+        end.z = cfg_->hcp.visualize_with_time_as_z_axis_scale * t;
         marker.points.push_back(end);
       }
     }
@@ -892,15 +963,16 @@ void TebVisualization::publishObstacles(const ObstContainer& obstacles) const
     marker.color.g = 0.0;
     marker.color.b = 0.0;
 
-    teb_marker_pub_.publish( marker );
+    teb_marker_pub_.publish(marker);
   }
 
   // Visualize line obstacles
   {
     std::size_t idx = 0;
-    for (ObstContainer::const_iterator obst = obstacles.begin(); obst != obstacles.end(); ++obst)
-    {
-      boost::shared_ptr<LineObstacle> pobst = boost::dynamic_pointer_cast<LineObstacle>(*obst);
+    for (ObstContainer::const_iterator obst = obstacles.begin();
+         obst != obstacles.end(); ++obst) {
+      boost::shared_ptr<LineObstacle> pobst =
+          boost::dynamic_pointer_cast<LineObstacle>(*obst);
       if (!pobst)
         continue;
 
@@ -930,19 +1002,19 @@ void TebVisualization::publishObstacles(const ObstContainer& obstacles) const
       marker.color.g = 1.0;
       marker.color.b = 0.0;
 
-      teb_marker_pub_.publish( marker );
+      teb_marker_pub_.publish(marker);
     }
   }
-
 
   // Visualize polygon obstacles
   {
     std::size_t idx = 0;
-    for (ObstContainer::const_iterator obst = obstacles.begin(); obst != obstacles.end(); ++obst)
-    {
-      boost::shared_ptr<PolygonObstacle> pobst = boost::dynamic_pointer_cast<PolygonObstacle>(*obst);
+    for (ObstContainer::const_iterator obst = obstacles.begin();
+         obst != obstacles.end(); ++obst) {
+      boost::shared_ptr<PolygonObstacle> pobst =
+          boost::dynamic_pointer_cast<PolygonObstacle>(*obst);
       if (!pobst)
-				continue;
+        continue;
 
       visualization_msgs::Marker marker;
       marker.header.frame_id = cfg_->map_frame;
@@ -953,8 +1025,8 @@ void TebVisualization::publishObstacles(const ObstContainer& obstacles) const
       marker.action = visualization_msgs::Marker::ADD;
       marker.lifetime = ros::Duration(2.0);
 
-      for (Point2dContainer::const_iterator vertex = pobst->vertices().begin(); vertex != pobst->vertices().end(); ++vertex)
-      {
+      for (Point2dContainer::const_iterator vertex = pobst->vertices().begin();
+           vertex != pobst->vertices().end(); ++vertex) {
         geometry_msgs::Point point;
         point.x = vertex->x();
         point.y = vertex->y();
@@ -964,8 +1036,7 @@ void TebVisualization::publishObstacles(const ObstContainer& obstacles) const
 
       // Also add last point to close the polygon
       // but only if polygon has more than 2 points (it is not a line)
-      if (pobst->vertices().size() > 2)
-      {
+      if (pobst->vertices().size() > 2) {
         geometry_msgs::Point point;
         point.x = pobst->vertices().front().x();
         point.y = pobst->vertices().front().y();
@@ -979,14 +1050,16 @@ void TebVisualization::publishObstacles(const ObstContainer& obstacles) const
       marker.color.g = 0.0;
       marker.color.b = 0.0;
 
-      teb_marker_pub_.publish( marker );
+      teb_marker_pub_.publish(marker);
     }
   }
 }
 
-void TebVisualization::publishViaPoints(const std::vector< Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> >& via_points, const std::string& ns) const
-{
-  if ( via_points.empty() || printErrorWhenNotInitialized() )
+void TebVisualization::publishViaPoints(
+    const std::vector<Eigen::Vector2d,
+                      Eigen::aligned_allocator<Eigen::Vector2d>> &via_points,
+    const std::string &ns) const {
+  if (via_points.empty() || printErrorWhenNotInitialized())
     return;
 
   visualization_msgs::Marker marker;
@@ -998,8 +1071,7 @@ void TebVisualization::publishViaPoints(const std::vector< Eigen::Vector2d, Eige
   marker.action = visualization_msgs::Marker::ADD;
   marker.lifetime = ros::Duration(2.0);
 
-  for (std::size_t i=0; i < via_points.size(); ++i)
-  {
+  for (std::size_t i = 0; i < via_points.size(); ++i) {
     geometry_msgs::Point point;
     point.x = via_points[i].x();
     point.y = via_points[i].y();
@@ -1014,12 +1086,12 @@ void TebVisualization::publishViaPoints(const std::vector< Eigen::Vector2d, Eige
   marker.color.g = 0.0;
   marker.color.b = 1.0;
 
-  teb_marker_pub_.publish( marker );
+  teb_marker_pub_.publish(marker);
 }
 
-void TebVisualization::publishTebContainer(const TebOptPlannerContainer& teb_planner, const std::string& ns)
-{
-if ( printErrorWhenNotInitialized() )
+void TebVisualization::publishTebContainer(
+    const TebOptPlannerContainer &teb_planner, const std::string &ns) {
+  if (printErrorWhenNotInitialized())
     return;
 
   visualization_msgs::Marker marker;
@@ -1031,21 +1103,23 @@ if ( printErrorWhenNotInitialized() )
   marker.action = visualization_msgs::Marker::ADD;
 
   // Iterate through teb pose sequence
-  for( TebOptPlannerContainer::const_iterator it_teb = teb_planner.begin(); it_teb != teb_planner.end(); ++it_teb )
-  {
+  for (TebOptPlannerContainer::const_iterator it_teb = teb_planner.begin();
+       it_teb != teb_planner.end(); ++it_teb) {
     // iterate single poses
     PoseSequence::const_iterator it_pose = it_teb->get()->teb().poses().begin();
-    TimeDiffSequence::const_iterator it_timediff = it_teb->get()->teb().timediffs().begin();
-    PoseSequence::const_iterator it_pose_end = it_teb->get()->teb().poses().end();
-    std::advance(it_pose_end, -1); // since we are interested in line segments, reduce end iterator by one.
+    TimeDiffSequence::const_iterator it_timediff =
+        it_teb->get()->teb().timediffs().begin();
+    PoseSequence::const_iterator it_pose_end =
+        it_teb->get()->teb().poses().end();
+    std::advance(it_pose_end, -1); // since we are interested in line
+                                   // segments, reduce end iterator by one.
     double time = 0;
 
-    while (it_pose != it_pose_end)
-    {
+    while (it_pose != it_pose_end) {
       geometry_msgs::Point point_start;
       point_start.x = (*it_pose)->x();
       point_start.y = (*it_pose)->y();
-      point_start.z = cfg_->hcp.visualize_with_time_as_z_axis_scale*time;
+      point_start.z = cfg_->hcp.visualize_with_time_as_z_axis_scale * time;
       marker.points.push_back(point_start);
 
       time += (*it_timediff)->dt();
@@ -1053,7 +1127,7 @@ if ( printErrorWhenNotInitialized() )
       geometry_msgs::Point point_end;
       point_end.x = (*boost::next(it_pose))->x();
       point_end.y = (*boost::next(it_pose))->y();
-      point_end.z = cfg_->hcp.visualize_with_time_as_z_axis_scale*time;
+      point_end.z = cfg_->hcp.visualize_with_time_as_z_axis_scale * time;
       marker.points.push_back(point_end);
       ++it_pose;
       ++it_timediff;
@@ -1065,32 +1139,30 @@ if ( printErrorWhenNotInitialized() )
   marker.color.g = 1.0;
   marker.color.b = 0.0;
 
-  teb_marker_pub_.publish( marker );
+  teb_marker_pub_.publish(marker);
 }
 
-void TebVisualization::publishFeedbackMessage(const std::vector< boost::shared_ptr<TebOptimalPlanner> >& teb_planners,
-                                              unsigned int selected_trajectory_idx, const ObstContainer& obstacles)
-{
+void TebVisualization::publishFeedbackMessage(
+    const std::vector<boost::shared_ptr<TebOptimalPlanner>> &teb_planners,
+    unsigned int selected_trajectory_idx, const ObstContainer &obstacles) {
   FeedbackMsg msg;
   msg.header.stamp = ros::Time::now();
   msg.header.frame_id = cfg_->map_frame;
   msg.selected_trajectory_idx = selected_trajectory_idx;
 
-
   msg.trajectories.resize(teb_planners.size());
 
   // Iterate through teb pose sequence
   std::size_t idx_traj = 0;
-  for( TebOptPlannerContainer::const_iterator it_teb = teb_planners.begin(); it_teb != teb_planners.end(); ++it_teb, ++idx_traj )
-  {
+  for (TebOptPlannerContainer::const_iterator it_teb = teb_planners.begin();
+       it_teb != teb_planners.end(); ++it_teb, ++idx_traj) {
     msg.trajectories[idx_traj].header = msg.header;
     it_teb->get()->getFullTrajectory(msg.trajectories[idx_traj].trajectory);
   }
 
   // add obstacles
   msg.obstacles_msg.obstacles.resize(obstacles.size());
-  for (std::size_t i=0; i<obstacles.size(); ++i)
-  {
+  for (std::size_t i = 0; i < obstacles.size(); ++i) {
     msg.obstacles_msg.header = msg.header;
 
     // copy polygon
@@ -1098,20 +1170,22 @@ void TebVisualization::publishFeedbackMessage(const std::vector< boost::shared_p
     obstacles[i]->toPolygonMsg(msg.obstacles_msg.obstacles[i].polygon);
 
     // copy id
-    msg.obstacles_msg.obstacles[i].id = i; // TODO: we do not have any id stored yet
+    msg.obstacles_msg.obstacles[i].id =
+        i; // TODO: we do not have any id stored yet
 
     // orientation
-    //msg.obstacles_msg.obstacles[i].orientation =; // TODO
+    // msg.obstacles_msg.obstacles[i].orientation =; // TODO
 
     // copy velocities
-    obstacles[i]->toTwistWithCovarianceMsg(msg.obstacles_msg.obstacles[i].velocities);
+    obstacles[i]->toTwistWithCovarianceMsg(
+        msg.obstacles_msg.obstacles[i].velocities);
   }
 
   feedback_pub_.publish(msg);
 }
 
-void TebVisualization::publishFeedbackMessage(const TebOptimalPlanner& teb_planner, const ObstContainer& obstacles)
-{
+void TebVisualization::publishFeedbackMessage(
+    const TebOptimalPlanner &teb_planner, const ObstContainer &obstacles) {
   FeedbackMsg msg;
   msg.header.stamp = ros::Time::now();
   msg.header.frame_id = cfg_->map_frame;
@@ -1123,8 +1197,7 @@ void TebVisualization::publishFeedbackMessage(const TebOptimalPlanner& teb_plann
 
   // add obstacles
   msg.obstacles_msg.obstacles.resize(obstacles.size());
-  for (std::size_t i=0; i<obstacles.size(); ++i)
-  {
+  for (std::size_t i = 0; i < obstacles.size(); ++i) {
     msg.obstacles_msg.header = msg.header;
 
     // copy polygon
@@ -1132,20 +1205,22 @@ void TebVisualization::publishFeedbackMessage(const TebOptimalPlanner& teb_plann
     obstacles[i]->toPolygonMsg(msg.obstacles_msg.obstacles[i].polygon);
 
     // copy id
-    msg.obstacles_msg.obstacles[i].id = i; // TODO: we do not have any id stored yet
+    msg.obstacles_msg.obstacles[i].id =
+        i; // TODO: we do not have any id stored yet
 
     // orientation
-    //msg.obstacles_msg.obstacles[i].orientation =; // TODO
+    // msg.obstacles_msg.obstacles[i].orientation =; // TODO
 
     // copy velocities
-    obstacles[i]->toTwistWithCovarianceMsg(msg.obstacles_msg.obstacles[i].velocities);
+    obstacles[i]->toTwistWithCovarianceMsg(
+        msg.obstacles_msg.obstacles[i].velocities);
   }
 
   feedback_pub_.publish(msg);
 }
 
-std_msgs::ColorRGBA TebVisualization::toColorMsg(double a, double r, double g, double b)
-{
+std_msgs::ColorRGBA TebVisualization::toColorMsg(double a, double r, double g,
+                                                 double b) {
   std_msgs::ColorRGBA color;
   color.a = a;
   color.r = r;
@@ -1154,11 +1229,10 @@ std_msgs::ColorRGBA TebVisualization::toColorMsg(double a, double r, double g, d
   return color;
 }
 
-bool TebVisualization::printErrorWhenNotInitialized() const
-{
-  if (!initialized_)
- {
-    ROS_ERROR("TebVisualization class not initialized. You must call initialize or an appropriate constructor");
+bool TebVisualization::printErrorWhenNotInitialized() const {
+  if (!initialized_) {
+    ROS_ERROR("TebVisualization class not initialized. You must call "
+              "initialize or an appropriate constructor");
     return true;
   }
   return false;

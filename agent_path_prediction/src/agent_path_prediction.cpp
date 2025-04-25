@@ -650,7 +650,7 @@ bool AgentPathPrediction::predictAgentsExternal(
             if(std::find(req.ids.begin(),req.ids.end(),agent.track_id)!=req.ids.end()){
               double dist_far = std::hypot(agent_start.pose.position.x-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.x,
                                            agent_start.pose.position.y-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.y);
-            if(dist_far > 0.1){ // To ensure that the path is recalculated only if the agent is deviating from the path
+            if(dist_far > 0.5){ // To ensure that the path is recalculated only if the agent is deviating from the path
               start_poses_far.push_back(true);
               AgentStartPoseVel agent_start_pose_vel = {
                   .id = agent.track_id, .pose = agent_start, .vel = segment.twist};
@@ -806,7 +806,7 @@ bool AgentPathPrediction::predictAgentsBehind(
             double dist_far = std::hypot(agent_start.pose.position.x-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.x,
                                          agent_start.pose.position.y-behind_path_vels_[behind_path_vels_pos[agent.track_id-1]].path.poses[0].pose.position.y);
 
-            if(dist_far > 0.1){ // To ensure that the path is recalculated only if the agent is deviating from the path
+            if(dist_far > 0.5){ // To ensure that the path is recalculated only if the agent is deviating from the path
               start_poses_far.push_back(true);
               AgentStartPoseVel agent_start_pose_vel = {
                   .id = agent.track_id, .pose = agent_start, .vel = segment.twist};

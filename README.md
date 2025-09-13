@@ -1,3 +1,12 @@
+## New Version
+
+
+https://github.com/LAAS-HRI/CoHAN2.0
+
+
+
+
+
 # CoHAN Planner Multi
 
 The extension of the [CoHAN Planner](https://github.com/sphanit/CoHAN_Planner) that allows the simultaneous running of multiple planners with namespace support.
